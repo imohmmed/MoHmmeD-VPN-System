@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Plus, Users, Trash2, Calendar, Copy, Check, Key,
-  Wifi, Power, QrCode, Smartphone,
+  Power, Smartphone,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -50,14 +50,13 @@ type Subscriber = {
   agentId?: string;
 };
 
-function SubscriberCard({ sub, onDelete, onDeactivate, onCopy, copied }: {
+function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
   sub: Subscriber;
   onDelete: (id: string) => void;
-  onDeactivate: (id: string) => void;
+  onToggle: (id: string) => void;
   onCopy: (text: string) => void;
   copied: string | null;
 }) {
-  const [showConfig, setShowConfig] = useState(false);
   const isExpired = new Date(sub.expiresAt) < new Date();
 
   return (
@@ -93,16 +92,15 @@ function SubscriberCard({ sub, onDelete, onDeactivate, onCopy, copied }: {
             <Button variant="ghost" size="icon" onClick={() => onCopy(sub.code)} data-testid={`button-copy-code-${sub.id}`}>
               {copied === sub.code ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             </Button>
-            {sub.cloudConfigUrl && (
-              <Button variant="ghost" size="icon" onClick={() => setShowConfig(!showConfig)} data-testid={`button-config-${sub.id}`}>
-                <QrCode className="w-4 h-4" />
-              </Button>
-            )}
-            {sub.isActive && (
-              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDeactivate(sub.id)} data-testid={`button-deactivate-${sub.id}`}>
-                <Power className="w-4 h-4" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={sub.isActive ? "text-destructive" : "text-green-600"}
+              onClick={() => onToggle(sub.id)}
+              data-testid={`button-toggle-${sub.id}`}
+            >
+              <Power className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(sub.id)} data-testid={`button-delete-${sub.id}`}>
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -119,21 +117,6 @@ function SubscriberCard({ sub, onDelete, onDeactivate, onCopy, copied }: {
           </div>
           {sub.notes && <p className="text-xs text-muted-foreground mt-1">{sub.notes}</p>}
         </div>
-
-        {showConfig && sub.cloudConfigUrl && (
-          <div className="ml-[52px] p-3 bg-muted rounded-md">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <Wifi className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-medium text-foreground">Cloud Config (NPV Tunnel)</span>
-              </div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => onCopy(sub.cloudConfigUrl!)}>
-                {copied === sub.cloudConfigUrl ? "Copied!" : "Copy URL"}
-              </Button>
-            </div>
-            <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">{sub.cloudConfigUrl}</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -165,11 +148,11 @@ export default function OwnerUsersPage() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/deactivate`),
+  const toggleMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/toggle`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
-      toast({ title: "Subscriber deactivated" });
+      toast({ title: "Status updated" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -308,7 +291,7 @@ export default function OwnerUsersPage() {
                 key={sub.id}
                 sub={sub}
                 onDelete={(id) => setDeleteId(id)}
-                onDeactivate={(id) => deactivateMutation.mutate(id)}
+                onToggle={(id) => toggleMutation.mutate(id)}
                 onCopy={handleCopy}
                 copied={copied}
               />

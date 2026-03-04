@@ -239,12 +239,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/subscribers/:id/deactivate", requireAuth(["owner"]), async (req, res) => {
-    const sub = await storage.deactivateSubscriber(req.params.id);
+  app.patch("/api/subscribers/:id/toggle", requireAuth(["owner", "agent"]), async (req, res) => {
+    const existing = await storage.getSubscriber(req.params.id);
+    if (!existing) return res.status(404).json({ message: "Subscriber not found" });
+
+    if (req.session.role === "agent" && existing.agentId !== req.session.accountId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const sub = await storage.updateSubscriber(req.params.id, { isActive: !existing.isActive });
     await storage.createLog({
       accountId: req.session.accountId!,
       action: "deactivate_code",
-      details: `Deactivated subscriber: ${sub.name}`,
+      details: `${sub.isActive ? "Activated" : "Deactivated"} subscriber: ${sub.name}`,
       targetId: sub.id,
     });
     res.json(sub);
