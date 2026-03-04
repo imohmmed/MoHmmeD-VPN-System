@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import LoginPage from "@/pages/login";
 import OwnerDashboard from "@/pages/owner/dashboard";
 import AgentsPage from "@/pages/owner/agents";
+import AgentDetailPage from "@/pages/owner/agent-detail";
 import OwnerUsersPage from "@/pages/owner/users";
 import TransactionsPage from "@/pages/owner/transactions";
 import LogsPage from "@/pages/owner/logs";
@@ -70,6 +71,11 @@ function Router() {
       <Route path="/owner">
         <AuthGuard roles={["owner"]}>
           <OwnerDashboard />
+        </AuthGuard>
+      </Route>
+      <Route path="/owner/agents/:id">
+        <AuthGuard roles={["owner"]}>
+          <AgentDetailPage />
         </AuthGuard>
       </Route>
       <Route path="/owner/agents">

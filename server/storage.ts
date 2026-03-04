@@ -113,6 +113,8 @@ export class DbStorage implements IStorage {
     const cloudConfigUrl = generateCloudConfigUrl(code, deviceId);
     const expiresAt = getExpiryDate(durationMonths);
 
+    const pricePaid = 5000 * durationMonths;
+
     const [sub] = await db.insert(subscribers).values({
       name,
       deviceId: deviceId || null,
@@ -124,7 +126,7 @@ export class DbStorage implements IStorage {
       agentId: agentId || null,
       durationMonths,
       expiresAt,
-      pricePaid: 5000,
+      pricePaid,
     }).returning();
     return sub;
   }

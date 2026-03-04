@@ -153,7 +153,7 @@ export default function AgentUsersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setCreateOpen(false);
       form.reset();
-      toast({ title: "User added (5,000 IQD charged)" });
+      toast({ title: "User added successfully" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -188,7 +188,7 @@ export default function AgentUsersPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold text-foreground">My Users</h2>
-            <p className="text-muted-foreground text-sm mt-0.5">{subs.length} total users (5,000 IQD per user)</p>
+            <p className="text-muted-foreground text-sm mt-0.5">{subs.length} total users (5,000 IQD per month)</p>
           </div>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -201,7 +201,7 @@ export default function AgentUsersPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  Add New User (5,000 IQD)
+                  Add New User
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
@@ -252,7 +252,7 @@ export default function AgentUsersPage() {
                   )} />
                   <DialogFooter>
                     <Button type="submit" disabled={createMutation.isPending} data-testid="button-confirm-add">
-                      {createMutation.isPending ? "Adding..." : "Add User (5,000 IQD)"}
+                      {createMutation.isPending ? "Adding..." : "Add User"}
                     </Button>
                   </DialogFooter>
                 </form>

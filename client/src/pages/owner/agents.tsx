@@ -21,12 +21,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Plus, UserCog, Mail, Users, Ban, CheckCircle,
-  Trash2, DollarSign, MoreVertical,
+  Trash2, DollarSign, MoreVertical, ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { useLocation } from "wouter";
 
 const createAgentSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -53,6 +54,7 @@ type Agent = {
 
 export default function AgentsPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [paymentAgentId, setPaymentAgentId] = useState<string | null>(null);
@@ -203,7 +205,12 @@ export default function AgentsPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map((agent) => (
-              <Card key={agent.id} data-testid={`card-agent-${agent.id}`}>
+              <Card
+                key={agent.id}
+                data-testid={`card-agent-${agent.id}`}
+                className="cursor-pointer transition-colors hover:bg-accent/50"
+                onClick={() => setLocation(`/owner/agents/${agent.id}`)}
+              >
                 <CardContent className="py-4">
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex-shrink-0">
@@ -237,27 +244,33 @@ export default function AgentsPage() {
                       </div>
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid={`button-agent-menu-${agent.id}`}>
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setPaymentAgentId(agent.id)} data-testid={`button-payment-${agent.id}`}>
-                          <DollarSign className="w-4 h-4 mr-2" />Record Payment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => suspendMutation.mutate(agent.id)} data-testid={`button-suspend-${agent.id}`}>
-                          {agent.isActive
-                            ? <><Ban className="w-4 h-4 mr-2" />Suspend</>
-                            : <><CheckCircle className="w-4 h-4 mr-2" />Activate</>
-                          }
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(agent.id)} data-testid={`button-delete-${agent.id}`}>
-                          <Trash2 className="w-4 h-4 mr-2" />Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1.5">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-agent-menu-${agent.id}`} onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setLocation(`/owner/agents/${agent.id}`)} data-testid={`button-view-${agent.id}`}>
+                            <Users className="w-4 h-4 mr-2" />View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setPaymentAgentId(agent.id)} data-testid={`button-payment-${agent.id}`}>
+                            <DollarSign className="w-4 h-4 mr-2" />Record Payment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => suspendMutation.mutate(agent.id)} data-testid={`button-suspend-${agent.id}`}>
+                            {agent.isActive
+                              ? <><Ban className="w-4 h-4 mr-2" />Suspend</>
+                              : <><CheckCircle className="w-4 h-4 mr-2" />Activate</>
+                            }
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(agent.id)} data-testid={`button-delete-${agent.id}`}>
+                            <Trash2 className="w-4 h-4 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -82,6 +82,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(result);
   });
 
+  app.get("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
+
+    const { passwordHash, ...safe } = agent;
+    const balance = await storage.getAgentBalance(agent.id);
+    const subs = await storage.getSubscribers(agent.id);
+    const txs = await storage.getTransactions(agent.id);
+    const logs = await storage.getLogs(agent.id);
+
+    const totalPurchases = txs.filter(t => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+    const totalPayments = txs.filter(t => t.type === "payment").reduce((s, t) => s + t.amount, 0);
+
+    res.json({
+      ...safe,
+      balance,
+      totalPurchases,
+      totalPayments,
+      subscribersCount: subs.length,
+      activeSubscribers: subs.filter(s => s.isActive).length,
+      subscribers: subs,
+      transactions: txs,
+      logs,
+    });
+  });
+
   app.post("/api/agents", requireAuth(["owner"]), async (req, res) => {
     try {
       const { email, username, password, notes } = req.body;
@@ -193,8 +219,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         await storage.createTransaction({
           agentId,
           type: "purchase",
-          amount: 5000,
-          description: `Subscriber: ${name} - Code: ${sub.code}`,
+          amount: sub.pricePaid,
+          description: `Subscriber: ${name} (${durationMonths || 1} month${(durationMonths || 1) > 1 ? "s" : ""}) - Code: ${sub.code}`,
           subscriberId: sub.id,
         });
       }

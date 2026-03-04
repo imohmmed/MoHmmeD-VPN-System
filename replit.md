@@ -30,12 +30,18 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - `/login` - Authentication
 - `/owner` - Owner dashboard with stats
 - `/owner/agents` - Agent management (create, suspend, delete, record payments)
+- `/owner/agents/:id` - Agent detail page (subscribers, transactions, logs, payment recording)
 - `/owner/users` - All subscribers management (unified user+code view)
 - `/owner/transactions` - Financial records
 - `/owner/logs` - Activity audit log
 - `/agent` - Agent dashboard
-- `/agent/users` - Agent's subscribers (with cost warning)
+- `/agent/users` - Agent's subscribers
 - `/agent/transactions` - Agent's financial history
+
+## Pricing
+- 1 month = 5,000 IQD
+- Price scales with duration: 12 months = 60,000 IQD (5,000 × 12)
+- Record Payment deducts from agent's outstanding debt
 
 ## Database Tables
 - `accounts` - Login accounts (owner/agent roles only)
