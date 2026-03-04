@@ -2,12 +2,14 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { Pool } from "pg";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
 const httpServer = createServer(app);
+const isProd = process.env.NODE_ENV === "production";
 
 declare module "express-session" {
   interface SessionData {
@@ -22,27 +24,39 @@ declare module "http" {
   }
 }
 
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+if (isProd) {
+  app.set("trust proxy", 1);
+}
+
 app.use(
   express.json({
+    limit: "1mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
 const PgSession = connectPgSimple(session);
 const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.use(session({
   store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
-  secret: process.env.SESSION_SECRET || "mohammed-vpn-secret-2024",
+  secret: process.env.SESSION_SECRET!,
   resave: false,
   saveUninitialized: false,
+  name: "mvpn.sid",
   cookie: {
-    secure: false,
+    secure: isProd,
     httpOnly: true,
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));

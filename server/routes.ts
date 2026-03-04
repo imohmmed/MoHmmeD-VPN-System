@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 
 function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
@@ -30,8 +31,26 @@ async function seedOwner() {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await seedOwner();
 
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { message: "Too many login attempts, try again after 15 minutes" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    message: { message: "Too many requests, slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.use("/api/", apiLimiter);
+
   // ===== AUTH =====
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", loginLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
       if (!email || !password) return res.status(400).json({ message: "Email and password required" });
