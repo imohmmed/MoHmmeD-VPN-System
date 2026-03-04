@@ -352,5 +352,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ balance });
   });
 
+  app.get("/api/cloud-config/:code", async (req, res) => {
+    try {
+      const subscriber = await storage.getSubscriberByCode(req.params.code);
+      if (!subscriber) return res.status(404).send("Config not found");
+      if (!subscriber.isActive) return res.status(403).send("Config disabled");
+      if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
+        return res.status(410).send("Config expired");
+      }
+      res.setHeader("Content-Type", "text/plain");
+      res.send(subscriber.cloudConfigUrl);
+    } catch (e) {
+      res.status(500).send("Server error");
+    }
+  });
+
   return httpServer;
 }

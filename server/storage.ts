@@ -20,6 +20,7 @@ export interface IStorage {
 
   getSubscribers(agentId?: string): Promise<Subscriber[]>;
   getSubscriber(id: string): Promise<Subscriber | undefined>;
+  getSubscriberByCode(code: string): Promise<Subscriber | undefined>;
   createSubscriber(data: {
     name: string; deviceId?: string; notes?: string;
     durationMonths: number; createdBy: string; agentId?: string;
@@ -101,6 +102,11 @@ export class DbStorage implements IStorage {
 
   async getSubscriber(id: string) {
     const [sub] = await db.select().from(subscribers).where(eq(subscribers.id, id));
+    return sub;
+  }
+
+  async getSubscriberByCode(code: string) {
+    const [sub] = await db.select().from(subscribers).where(eq(subscribers.code, code));
     return sub;
   }
 

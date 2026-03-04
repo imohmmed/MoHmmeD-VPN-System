@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Plus, Users, Trash2, Calendar, Copy, Check, Key,
-  Power, Smartphone,
+  Power, Smartphone, Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -105,6 +105,13 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
             <span className="font-mono font-bold text-foreground">{sub.code}</span>
             <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs" onClick={() => onCopy(sub.code)}>
               {copied === sub.code ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Link2 className="w-3 h-3 text-blue-500" />
+            <span className="font-mono text-blue-600 dark:text-blue-400 break-all text-[11px]">{`${window.location.origin}/api/cloud-config/${sub.code}`}</span>
+            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs" data-testid={`button-copy-config-${sub.id}`} onClick={() => onCopy(`${window.location.origin}/api/cloud-config/${sub.code}`)}>
+              {copied === `${window.location.origin}/api/cloud-config/${sub.code}` ? "Copied!" : "Copy"}
             </Button>
           </div>
           {sub.deviceId && (
