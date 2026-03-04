@@ -64,6 +64,22 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - `GET /api/logs` - Activity logs (owner only)
 - `GET /api/stats` - Dashboard stats
 
+## Security
+- Helmet middleware for HTTP security headers
+- Rate limiting: 10 login attempts/15min, 100 API requests/min
+- bcryptjs password hashing (12 rounds)
+- Session cookies: httpOnly, sameSite=lax, secure in production
+- Request body size limited to 1MB
+
+## VPS Deployment
+- Deployment files in `deploy/` directory
+- `deploy/setup.sh` - Automated setup script for Ubuntu/Debian VPS
+- `deploy/nginx.conf` - Nginx reverse proxy config with SSL
+- `deploy/ecosystem.config.cjs` - PM2 process manager config
+- `deploy/DEPLOY_GUIDE.md` - Step-by-step deployment instructions
+- Domain: mohmmedvpn.com → VPS 5.189.174.9
+- SSL via Let's Encrypt (certbot)
+
 ## NPV Tunnel Integration
 - Users copy their Device ID from NPV Tunnel app (More tab)
 - System generates a vmess:// cloud config URL

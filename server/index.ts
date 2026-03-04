@@ -47,9 +47,14 @@ app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 const PgSession = connectPgSimple(session);
 const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+if (!process.env.SESSION_SECRET) {
+  console.error("FATAL: SESSION_SECRET environment variable is required");
+  process.exit(1);
+}
+
 app.use(session({
   store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
-  secret: process.env.SESSION_SECRET!,
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   name: "mvpn.sid",

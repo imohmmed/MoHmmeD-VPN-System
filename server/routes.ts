@@ -16,15 +16,17 @@ function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
 }
 
 async function seedOwner() {
-  const existing = await storage.getAccountByEmail("it.mohmmed@yahoo.com");
+  const email = process.env.OWNER_EMAIL || "it.mohmmed@yahoo.com";
+  const password = process.env.OWNER_PASSWORD || "ZVwas781)@@";
+  const existing = await storage.getAccountByEmail(email);
   if (!existing) {
     await storage.createAccount({
-      email: "it.mohmmed@yahoo.com",
+      email,
       username: "owner",
-      password: "ZVwas781)@@",
+      password,
       role: "owner",
     });
-    console.log("Owner account created");
+    console.log("Owner account seeded — change the password after first login");
   }
 }
 
