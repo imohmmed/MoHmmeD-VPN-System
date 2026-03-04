@@ -73,18 +73,10 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
               </Badge>
               <Badge variant="outline" className="text-xs">{sub.durationMonths} month{sub.durationMonths > 1 ? "s" : ""}</Badge>
             </div>
-            <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-              {sub.deviceId && (
-                <span className="flex items-center gap-1">
-                  <Smartphone className="w-3 h-3" />
-                  {sub.deviceId.length > 20 ? sub.deviceId.substring(0, 20) + "..." : sub.deviceId}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                Expires: {format(new Date(sub.expiresAt), "MMM d, yyyy")}
-              </span>
-            </div>
+            <span className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+              <Calendar className="w-3 h-3" />
+              Expires: {format(new Date(sub.expiresAt), "MMM d, yyyy")}
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -106,7 +98,7 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
           </div>
         </div>
 
-        <div className="pl-[52px]">
+        <div className="pl-[52px] space-y-1.5">
           <div className="flex items-center gap-2 text-xs">
             <Key className="w-3 h-3 text-primary" />
             <span className="font-mono font-bold text-foreground">{sub.code}</span>
@@ -114,7 +106,15 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
               {copied === sub.code ? "Copied!" : "Copy"}
             </Button>
           </div>
-          {sub.notes && <p className="text-xs text-muted-foreground mt-1">{sub.notes}</p>}
+          {sub.deviceId && (
+            <div className="flex items-center gap-2 text-xs" data-testid={`text-deviceid-${sub.id}`}>
+              <Smartphone className="w-3 h-3 text-muted-foreground" />
+              <span className="font-mono text-foreground break-all">{sub.deviceId}</span>
+            </div>
+          )}
+          {sub.notes && (
+            <p className="text-xs text-muted-foreground" data-testid={`text-notes-${sub.id}`}>{sub.notes}</p>
+          )}
         </div>
       </CardContent>
     </Card>
