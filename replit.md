@@ -1,7 +1,7 @@
 # MoHmmeD VPN - VPN Subscription Management System
 
 ## Overview
-A full-stack VPN subscription management platform built for selling NPV Tunnel VPN configurations. Supports three user roles: Owner, Agent (reseller), and User.
+A full-stack VPN subscription management platform built for selling NPV Tunnel VPN configurations. Supports three user roles: Owner, Agent (reseller), and Subscriber (merged user+code concept).
 
 ## Architecture
 - **Frontend**: React + TypeScript + Vite + TailwindCSS + shadcn/ui
@@ -10,14 +10,14 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - **Auth**: Session-based authentication with bcryptjs
 
 ## User Roles
-1. **Owner** (it.mohmmed@yahoo.com): Full admin access — manages agents, users, codes, transactions, activity logs
-2. **Agent**: Reseller account — generates VPN codes (5,000 IQD each), manages their own users
-3. **User**: End subscriber (for reference/tracking only, managed by owner/agent)
+1. **Owner** (it.mohmmed@yahoo.com): Full admin access — manages agents, subscribers, transactions, activity logs
+2. **Agent**: Reseller account — creates subscribers (5,000 IQD each), manages their own subscribers
+3. **Subscriber**: VPN user with name, device ID, VPN code, and cloud config URL (not a login account)
 
 ## Business Logic
-- Each VPN code costs agents 5,000 IQD
-- Owner generates codes for free
-- Agents accumulate debt per code; owner records payments to reduce debt
+- Each subscriber costs agents 5,000 IQD
+- Owner creates subscribers for free
+- Agents accumulate debt per subscriber; owner records payments to reduce debt
 - Agent accounts can be suspended (can't login) or deleted (all records removed)
 
 ## VPN Configuration
@@ -30,20 +30,33 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - `/login` - Authentication
 - `/owner` - Owner dashboard with stats
 - `/owner/agents` - Agent management (create, suspend, delete, record payments)
-- `/owner/users` - All users management
-- `/owner/codes` - All VPN codes
+- `/owner/users` - All subscribers management (unified user+code view)
 - `/owner/transactions` - Financial records
 - `/owner/logs` - Activity audit log
 - `/agent` - Agent dashboard
-- `/agent/codes` - Agent's VPN codes (with cost warning)
-- `/agent/users` - Agent's users
+- `/agent/users` - Agent's subscribers (with cost warning)
 - `/agent/transactions` - Agent's financial history
 
 ## Database Tables
-- `accounts` - All user accounts (owner/agent/user)
-- `vpn_codes` - Generated VPN codes with config data
+- `accounts` - Login accounts (owner/agent roles only)
+- `subscribers` - VPN subscribers with name, device ID, code, config, expiry
 - `transactions` - Financial transactions per agent
 - `activity_logs` - Audit trail of all actions
+
+## API Endpoints
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Current user
+- `GET/POST /api/agents` - List/create agents
+- `PATCH /api/agents/:id/suspend` - Toggle agent suspension
+- `DELETE /api/agents/:id` - Delete agent
+- `POST /api/agents/:id/payment` - Record payment
+- `GET/POST /api/subscribers` - List/create subscribers
+- `PATCH /api/subscribers/:id/deactivate` - Deactivate subscriber
+- `DELETE /api/subscribers/:id` - Delete subscriber
+- `GET /api/transactions` - List transactions
+- `GET /api/logs` - Activity logs (owner only)
+- `GET /api/stats` - Dashboard stats
 
 ## NPV Tunnel Integration
 - Users copy their Device ID from NPV Tunnel app (More tab)

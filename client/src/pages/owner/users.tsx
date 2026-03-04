@@ -13,6 +13,9 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -20,118 +23,254 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Users, Mail, Trash2, Calendar } from "lucide-react";
+import {
+  Plus, Users, Trash2, Calendar, Copy, Check, Key,
+  Wifi, Power, QrCode, Smartphone,
+} from "lucide-react";
 import { format } from "date-fns";
 
-const createUserSchema = z.object({
-  email: z.string().email("Invalid email"),
-  username: z.string().min(3, "Min 3 characters"),
-  password: z.string().min(6, "Min 6 characters"),
+const createSubSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  deviceId: z.string().optional(),
   notes: z.string().optional(),
+  durationMonths: z.number().min(1).max(12).default(1),
 });
 
-type UserAccount = {
+type Subscriber = {
   id: string;
-  email: string;
-  username: string;
-  isActive: boolean;
-  createdAt: string;
-  createdBy?: string;
+  name: string;
+  deviceId?: string;
   notes?: string;
+  code: string;
+  cloudConfigUrl?: string;
+  isActive: boolean;
+  durationMonths: number;
+  expiresAt: string;
+  createdAt: string;
+  agentId?: string;
 };
 
-export default function UsersPage() {
+function SubscriberCard({ sub, onDelete, onDeactivate, onCopy, copied }: {
+  sub: Subscriber;
+  onDelete: (id: string) => void;
+  onDeactivate: (id: string) => void;
+  onCopy: (text: string) => void;
+  copied: string | null;
+}) {
+  const [showConfig, setShowConfig] = useState(false);
+  const isExpired = new Date(sub.expiresAt) < new Date();
+
+  return (
+    <Card data-testid={`card-sub-${sub.id}`}>
+      <CardContent className="py-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex-shrink-0">
+            <span className="text-sm font-bold text-primary">{sub.name[0].toUpperCase()}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-foreground">{sub.name}</span>
+              <Badge variant={sub.isActive && !isExpired ? "secondary" : "destructive"} className="text-xs">
+                {!sub.isActive ? "Inactive" : isExpired ? "Expired" : "Active"}
+              </Badge>
+              <Badge variant="outline" className="text-xs">{sub.durationMonths} month{sub.durationMonths > 1 ? "s" : ""}</Badge>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
+              {sub.deviceId && (
+                <span className="flex items-center gap-1">
+                  <Smartphone className="w-3 h-3" />
+                  {sub.deviceId.length > 20 ? sub.deviceId.substring(0, 20) + "..." : sub.deviceId}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Expires: {format(new Date(sub.expiresAt), "MMM d, yyyy")}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => onCopy(sub.code)} data-testid={`button-copy-code-${sub.id}`}>
+              {copied === sub.code ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            </Button>
+            {sub.cloudConfigUrl && (
+              <Button variant="ghost" size="icon" onClick={() => setShowConfig(!showConfig)} data-testid={`button-config-${sub.id}`}>
+                <QrCode className="w-4 h-4" />
+              </Button>
+            )}
+            {sub.isActive && (
+              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDeactivate(sub.id)} data-testid={`button-deactivate-${sub.id}`}>
+                <Power className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(sub.id)} data-testid={`button-delete-${sub.id}`}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="pl-[52px]">
+          <div className="flex items-center gap-2 text-xs">
+            <Key className="w-3 h-3 text-primary" />
+            <span className="font-mono font-bold text-foreground">{sub.code}</span>
+            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs" onClick={() => onCopy(sub.code)}>
+              {copied === sub.code ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+          {sub.notes && <p className="text-xs text-muted-foreground mt-1">{sub.notes}</p>}
+        </div>
+
+        {showConfig && sub.cloudConfigUrl && (
+          <div className="ml-[52px] p-3 bg-muted rounded-md">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Wifi className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">Cloud Config (NPV Tunnel)</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => onCopy(sub.cloudConfigUrl!)}>
+                {copied === sub.cloudConfigUrl ? "Copied!" : "Copy URL"}
+              </Button>
+            </div>
+            <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">{sub.cloudConfigUrl}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function OwnerUsersPage() {
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data: users = [], isLoading } = useQuery<UserAccount[]>({ queryKey: ["/api/users"] });
+  const { data: subs = [], isLoading } = useQuery<Subscriber[]>({ queryKey: ["/api/subscribers"] });
 
   const form = useForm({
-    resolver: zodResolver(createUserSchema),
-    defaultValues: { email: "", username: "", password: "", notes: "" },
+    resolver: zodResolver(createSubSchema),
+    defaultValues: { name: "", deviceId: "", notes: "", durationMonths: 1 },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/users", data),
+    mutationFn: (data: any) => apiRequest("POST", "/api/subscribers", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setCreateOpen(false);
       form.reset();
-      toast({ title: "User created successfully" });
+      toast({ title: "Subscriber added successfully" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/deactivate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
+      toast({ title: "Subscriber deactivated" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/users/${id}`),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/subscribers/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setDeleteId(null);
-      toast({ title: "User deleted" });
+      toast({ title: "Subscriber deleted" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const filtered = users.filter(u =>
-    u.username.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(text);
+    setTimeout(() => setCopied(null), 2000);
+    toast({ title: "Copied to clipboard" });
+  };
+
+  const filtered = subs.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.code.toLowerCase().includes(search.toLowerCase()) ||
+    (s.deviceId && s.deviceId.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const activeCount = subs.filter(s => s.isActive && new Date(s.expiresAt) >= new Date()).length;
+
   return (
-    <Layout title="Manage Users">
+    <Layout title="Users">
       <div className="space-y-5 max-w-5xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Users</h2>
-            <p className="text-muted-foreground text-sm mt-0.5">All subscribed customers</p>
+            <p className="text-muted-foreground text-sm mt-0.5">{activeCount} active / {subs.length} total</p>
           </div>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-create-user">
+              <Button data-testid="button-add-subscriber">
                 <Plus className="w-4 h-4 mr-2" />
-                New User
+                Add User
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create User Account</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Add New User
+                </DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
-                  <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl><Input {...field} type="email" placeholder="user@email.com" data-testid="input-user-email" /></FormControl>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl><Input {...field} placeholder="Subscriber name" data-testid="input-sub-name" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="username" render={({ field }) => (
+                  <FormField control={form.control} name="deviceId" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl><Input {...field} placeholder="username" data-testid="input-user-username" /></FormControl>
-                      <FormMessage />
+                      <FormLabel>Device ID (NPV Tunnel)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="0564022E-FC5A-46D8-B82C-E06C4BBE31A0" data-testid="input-device-id" />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">From NPV Tunnel → More → Device ID</p>
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="password" render={({ field }) => (
+                  <FormField control={form.control} name="durationMonths" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl><Input {...field} type="password" placeholder="••••••••" data-testid="input-user-password" /></FormControl>
-                      <FormMessage />
+                      <FormLabel>Duration</FormLabel>
+                      <Select
+                        value={String(field.value)}
+                        onValueChange={(v) => field.onChange(Number(v))}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-duration">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">1 Month</SelectItem>
+                          <SelectItem value="2">2 Months</SelectItem>
+                          <SelectItem value="3">3 Months</SelectItem>
+                          <SelectItem value="6">6 Months</SelectItem>
+                          <SelectItem value="12">12 Months</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Notes (optional)</FormLabel>
-                      <FormControl><Textarea {...field} placeholder="Notes about this user..." /></FormControl>
+                      <FormControl><Textarea {...field} placeholder="Any notes..." /></FormControl>
                     </FormItem>
                   )} />
                   <DialogFooter>
-                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-confirm-create-user">
-                      {createMutation.isPending ? "Creating..." : "Create User"}
+                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-confirm-add">
+                      {createMutation.isPending ? "Adding..." : "Add User"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -141,61 +280,38 @@ export default function UsersPage() {
         </div>
 
         <Input
-          placeholder="Search users..."
+          placeholder="Search by name, code, or device ID..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          data-testid="input-search-users"
+          data-testid="input-search"
           className="max-w-sm"
         />
 
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}><CardContent className="py-4"><Skeleton className="h-14 w-full" /></CardContent></Card>
+              <Card key={i}><CardContent className="py-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="w-12 h-12 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No users found</p>
+              <p className="text-muted-foreground font-medium">No users found</p>
+              <p className="text-xs text-muted-foreground mt-1">Add your first user above</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {filtered.map((user) => (
-              <Card key={user.id} data-testid={`card-user-${user.id}`}>
-                <CardContent className="flex flex-wrap items-center gap-4 py-3">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-full bg-accent border border-accent-foreground/10 flex-shrink-0">
-                    <span className="text-sm font-bold text-accent-foreground">{user.username[0].toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-foreground text-sm">{user.username}</span>
-                      <Badge variant={user.isActive ? "secondary" : "destructive"} className="text-xs">
-                        {user.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Mail className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                    <Calendar className="w-3 h-3" />
-                    {format(new Date(user.createdAt), "MMM d, yyyy")}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive flex-shrink-0"
-                    onClick={() => setDeleteId(user.id)}
-                    data-testid={`button-delete-user-${user.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </CardContent>
-              </Card>
+          <div className="space-y-3">
+            {filtered.map((sub) => (
+              <SubscriberCard
+                key={sub.id}
+                sub={sub}
+                onDelete={(id) => setDeleteId(id)}
+                onDeactivate={(id) => deactivateMutation.mutate(id)}
+                onCopy={handleCopy}
+                copied={copied}
+              />
             ))}
           </div>
         )}
@@ -205,18 +321,16 @@ export default function UsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this user account. This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete this user and their VPN code.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               className="bg-destructive text-destructive-foreground"
-              data-testid="button-confirm-delete-user"
+              data-testid="button-confirm-delete"
             >
-              Delete User
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

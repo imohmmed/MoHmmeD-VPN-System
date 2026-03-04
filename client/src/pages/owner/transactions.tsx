@@ -12,7 +12,7 @@ type Transaction = {
   type: "purchase" | "payment";
   amount: number;
   description?: string;
-  codeId?: string;
+  subscriberId?: string;
   createdAt: string;
 };
 

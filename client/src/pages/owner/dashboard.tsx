@@ -2,28 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Key, CreditCard, TrendingUp, UserCog, AlertTriangle } from "lucide-react";
+import { Users, TrendingUp, UserCog, AlertTriangle } from "lucide-react";
 
 type Stats = {
   agentsCount: number;
-  usersCount: number;
-  codesCount: number;
+  subscribersCount: number;
   totalOwed: number;
   totalRevenue: number;
 };
 
-function StatCard({ title, value, icon: Icon, description, color = "primary" }: {
-  title: string;
-  value: string | number;
-  icon: any;
-  description?: string;
-  color?: string;
+function StatCard({ title, value, icon: Icon, description }: {
+  title: string; value: string | number; icon: any; description?: string;
 }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className={`p-2 rounded-md bg-primary/10`}>
+        <div className="p-2 rounded-md bg-primary/10">
           <Icon className="w-4 h-4 text-primary" />
         </div>
       </CardHeader>
@@ -39,8 +34,7 @@ export default function OwnerDashboard() {
   const { data: stats, isLoading } = useQuery<Stats>({ queryKey: ["/api/stats"] });
   const { data: agents } = useQuery<any[]>({ queryKey: ["/api/agents"] });
 
-  const formatCurrency = (amount: number) =>
-    `${amount.toLocaleString()} IQD`;
+  const formatCurrency = (amount: number) => `${amount.toLocaleString()} IQD`;
 
   return (
     <Layout title="Owner Dashboard">
@@ -51,43 +45,17 @@ export default function OwnerDashboard() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i}><CardContent className="pt-6"><Skeleton className="h-12 w-full" /></CardContent></Card>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard
-              title="Total Agents"
-              value={stats?.agentsCount ?? 0}
-              icon={UserCog}
-              description="Active reseller accounts"
-            />
-            <StatCard
-              title="Total Users"
-              value={stats?.usersCount ?? 0}
-              icon={Users}
-              description="Subscribed customers"
-            />
-            <StatCard
-              title="VPN Codes Issued"
-              value={stats?.codesCount ?? 0}
-              icon={Key}
-              description="All generated codes"
-            />
-            <StatCard
-              title="Total Revenue"
-              value={formatCurrency(stats?.totalRevenue ?? 0)}
-              icon={TrendingUp}
-              description="Payments collected"
-            />
-            <StatCard
-              title="Outstanding Balance"
-              value={formatCurrency(stats?.totalOwed ?? 0)}
-              icon={AlertTriangle}
-              description="Owed by all agents"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard title="Total Agents" value={stats?.agentsCount ?? 0} icon={UserCog} description="Active resellers" />
+            <StatCard title="Total Subscribers" value={stats?.subscribersCount ?? 0} icon={Users} description="Active users" />
+            <StatCard title="Revenue Collected" value={formatCurrency(stats?.totalRevenue ?? 0)} icon={TrendingUp} description="Payments received" />
+            <StatCard title="Outstanding" value={formatCurrency(stats?.totalOwed ?? 0)} icon={AlertTriangle} description="Owed by agents" />
           </div>
         )}
 
@@ -95,17 +63,15 @@ export default function OwnerDashboard() {
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-3">Agent Status</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {agents.slice(0, 4).map((agent: any) => (
+              {agents.slice(0, 6).map((agent: any) => (
                 <Card key={agent.id} data-testid={`card-agent-${agent.id}`}>
                   <CardContent className="flex items-center gap-4 py-4">
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex-shrink-0">
-                      <span className="text-sm font-bold text-primary">
-                        {agent.username[0].toUpperCase()}
-                      </span>
+                      <span className="text-sm font-bold text-primary">{agent.username[0].toUpperCase()}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-foreground truncate">{agent.username}</p>
-                      <p className="text-xs text-muted-foreground truncate">{agent.email}</p>
+                      <p className="text-xs text-muted-foreground">{agent.subscribersCount} subscribers</p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className={`text-sm font-bold ${agent.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>

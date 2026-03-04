@@ -9,11 +9,9 @@ import LoginPage from "@/pages/login";
 import OwnerDashboard from "@/pages/owner/dashboard";
 import AgentsPage from "@/pages/owner/agents";
 import OwnerUsersPage from "@/pages/owner/users";
-import CodesPage from "@/pages/owner/codes";
 import TransactionsPage from "@/pages/owner/transactions";
 import LogsPage from "@/pages/owner/logs";
 import AgentDashboard from "@/pages/agent/dashboard";
-import AgentCodesPage from "@/pages/agent/codes";
 import AgentUsersPage from "@/pages/agent/users";
 import AgentTransactionsPage from "@/pages/agent/transactions";
 import NotFound from "@/pages/not-found";
@@ -84,11 +82,6 @@ function Router() {
           <OwnerUsersPage />
         </AuthGuard>
       </Route>
-      <Route path="/owner/codes">
-        <AuthGuard roles={["owner"]}>
-          <CodesPage />
-        </AuthGuard>
-      </Route>
       <Route path="/owner/transactions">
         <AuthGuard roles={["owner"]}>
           <TransactionsPage />
@@ -103,11 +96,6 @@ function Router() {
       <Route path="/agent">
         <AuthGuard roles={["agent"]}>
           <AgentDashboard />
-        </AuthGuard>
-      </Route>
-      <Route path="/agent/codes">
-        <AuthGuard roles={["agent"]}>
-          <AgentCodesPage />
         </AuthGuard>
       </Route>
       <Route path="/agent/users">

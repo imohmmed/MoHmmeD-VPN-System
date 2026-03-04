@@ -1,12 +1,11 @@
 import { db } from "./db";
-import { accounts, vpnCodes, transactions, activityLogs } from "@shared/schema";
-import type { Account, VpnCode, Transaction, ActivityLog } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { accounts, subscribers, transactions, activityLogs } from "@shared/schema";
+import type { Account, Subscriber, Transaction, ActivityLog } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-  // Accounts
   getAccount(id: string): Promise<Account | undefined>;
   getAccountByEmail(email: string): Promise<Account | undefined>;
   getAccountByUsername(username: string): Promise<Account | undefined>;
@@ -17,30 +16,25 @@ export interface IStorage {
   updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username">>): Promise<Account>;
   deleteAccount(id: string): Promise<void>;
   getAgents(): Promise<Account[]>;
-  getUsers(agentId?: string): Promise<Account[]>;
   verifyPassword(account: Account, password: string): Promise<boolean>;
 
-  // VPN Codes
-  getCode(id: string): Promise<VpnCode | undefined>;
-  getCodeByCode(code: string): Promise<VpnCode | undefined>;
-  getCodes(agentId?: string): Promise<VpnCode[]>;
-  createCode(data: {
-    deviceId?: string; createdBy: string; agentId?: string;
-    assignedTo?: string; planName?: string; pricePaid?: number;
-    expiresAt?: Date;
-  }): Promise<VpnCode>;
-  updateCode(id: string, data: Partial<Pick<VpnCode, "isActive" | "assignedTo" | "deviceId" | "configData" | "cloudConfigUrl">>): Promise<VpnCode>;
-  deactivateCode(id: string): Promise<VpnCode>;
+  getSubscribers(agentId?: string): Promise<Subscriber[]>;
+  getSubscriber(id: string): Promise<Subscriber | undefined>;
+  createSubscriber(data: {
+    name: string; deviceId?: string; notes?: string;
+    durationMonths: number; createdBy: string; agentId?: string;
+  }): Promise<Subscriber>;
+  updateSubscriber(id: string, data: Partial<Pick<Subscriber, "isActive" | "name" | "deviceId" | "notes">>): Promise<Subscriber>;
+  deleteSubscriber(id: string): Promise<void>;
+  deactivateSubscriber(id: string): Promise<Subscriber>;
 
-  // Transactions
   getTransactions(agentId?: string): Promise<Transaction[]>;
   createTransaction(data: {
     agentId: string; type: "purchase" | "payment";
-    amount: number; description?: string; codeId?: string;
+    amount: number; description?: string; subscriberId?: string;
   }): Promise<Transaction>;
   getAgentBalance(agentId: string): Promise<number>;
 
-  // Activity Logs
   getLogs(accountId?: string, limit?: number): Promise<ActivityLog[]>;
   createLog(data: {
     accountId: string; action: ActivityLog["action"];
@@ -83,8 +77,9 @@ export class DbStorage implements IStorage {
   }
 
   async deleteAccount(id: string) {
+    await db.delete(subscribers).where(eq(subscribers.agentId, id));
+    await db.delete(transactions).where(eq(transactions.agentId, id));
     await db.delete(activityLogs).where(eq(activityLogs.accountId, id));
-    await db.update(vpnCodes).set({ assignedTo: null }).where(eq(vpnCodes.assignedTo, id));
     await db.delete(accounts).where(eq(accounts.id, id));
   }
 
@@ -96,63 +91,56 @@ export class DbStorage implements IStorage {
     return db.select().from(accounts).where(eq(accounts.role, "agent")).orderBy(desc(accounts.createdAt));
   }
 
-  async getUsers(agentId?: string) {
+  // Subscribers
+  async getSubscribers(agentId?: string) {
     if (agentId) {
-      return db.select().from(accounts).where(
-        and(eq(accounts.role, "user"), eq(accounts.createdBy, agentId))
-      ).orderBy(desc(accounts.createdAt));
+      return db.select().from(subscribers).where(eq(subscribers.agentId, agentId)).orderBy(desc(subscribers.createdAt));
     }
-    return db.select().from(accounts).where(eq(accounts.role, "user")).orderBy(desc(accounts.createdAt));
+    return db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
   }
 
-  async getCode(id: string) {
-    const [code] = await db.select().from(vpnCodes).where(eq(vpnCodes.id, id));
-    return code;
+  async getSubscriber(id: string) {
+    const [sub] = await db.select().from(subscribers).where(eq(subscribers.id, id));
+    return sub;
   }
 
-  async getCodeByCode(code: string) {
-    const [c] = await db.select().from(vpnCodes).where(eq(vpnCodes.code, code));
-    return c;
-  }
-
-  async getCodes(agentId?: string) {
-    if (agentId) {
-      return db.select().from(vpnCodes).where(eq(vpnCodes.agentId, agentId)).orderBy(desc(vpnCodes.createdAt));
-    }
-    return db.select().from(vpnCodes).orderBy(desc(vpnCodes.createdAt));
-  }
-
-  async createCode({ deviceId, createdBy, agentId, assignedTo, planName, pricePaid, expiresAt }: {
-    deviceId?: string; createdBy: string; agentId?: string;
-    assignedTo?: string; planName?: string; pricePaid?: number; expiresAt?: Date;
+  async createSubscriber({ name, deviceId, notes, durationMonths, createdBy, agentId }: {
+    name: string; deviceId?: string; notes?: string;
+    durationMonths: number; createdBy: string; agentId?: string;
   }) {
     const code = generateCode();
     const configData = generateVpnConfig(deviceId);
     const cloudConfigUrl = generateCloudConfigUrl(code, deviceId);
+    const expiresAt = getExpiryDate(durationMonths);
 
-    const [vpnCode] = await db.insert(vpnCodes).values({
-      code,
+    const [sub] = await db.insert(subscribers).values({
+      name,
       deviceId: deviceId || null,
+      notes: notes || null,
+      code,
       configData: JSON.stringify(configData),
       cloudConfigUrl,
       createdBy,
       agentId: agentId || null,
-      assignedTo: assignedTo || null,
-      planName: planName || "Monthly",
-      pricePaid: pricePaid || 5000,
-      expiresAt: expiresAt || getMonthLater(),
+      durationMonths,
+      expiresAt,
+      pricePaid: 5000,
     }).returning();
-    return vpnCode;
+    return sub;
   }
 
-  async updateCode(id: string, data: Partial<Pick<VpnCode, "isActive" | "assignedTo" | "deviceId" | "configData" | "cloudConfigUrl">>) {
-    const [code] = await db.update(vpnCodes).set(data).where(eq(vpnCodes.id, id)).returning();
-    return code;
+  async updateSubscriber(id: string, data: Partial<Pick<Subscriber, "isActive" | "name" | "deviceId" | "notes">>) {
+    const [sub] = await db.update(subscribers).set(data).where(eq(subscribers.id, id)).returning();
+    return sub;
   }
 
-  async deactivateCode(id: string) {
-    const [code] = await db.update(vpnCodes).set({ isActive: false }).where(eq(vpnCodes.id, id)).returning();
-    return code;
+  async deleteSubscriber(id: string) {
+    await db.delete(subscribers).where(eq(subscribers.id, id));
+  }
+
+  async deactivateSubscriber(id: string) {
+    const [sub] = await db.update(subscribers).set({ isActive: false }).where(eq(subscribers.id, id)).returning();
+    return sub;
   }
 
   async getTransactions(agentId?: string) {
@@ -162,14 +150,14 @@ export class DbStorage implements IStorage {
     return db.select().from(transactions).orderBy(desc(transactions.createdAt));
   }
 
-  async createTransaction({ agentId, type, amount, description, codeId }: {
+  async createTransaction({ agentId, type, amount, description, subscriberId }: {
     agentId: string; type: "purchase" | "payment";
-    amount: number; description?: string; codeId?: string;
+    amount: number; description?: string; subscriberId?: string;
   }) {
     const [tx] = await db.insert(transactions).values({
       agentId, type, amount,
       description: description || null,
-      codeId: codeId || null,
+      subscriberId: subscriberId || null,
     }).returning();
     return tx;
   }
@@ -244,9 +232,9 @@ function generateCloudConfigUrl(code: string, deviceId?: string): string {
   return `vmess://${base64}`;
 }
 
-function getMonthLater(): Date {
+function getExpiryDate(months: number): Date {
   const d = new Date();
-  d.setMonth(d.getMonth() + 1);
+  d.setMonth(d.getMonth() + months);
   return d;
 }
 

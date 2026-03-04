@@ -23,18 +23,19 @@ export const accounts = pgTable("accounts", {
   notes: text("notes"),
 });
 
-export const vpnCodes = pgTable("vpn_codes", {
+export const subscribers = pgTable("subscribers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
   deviceId: text("device_id"),
+  notes: text("notes"),
+  code: text("code").notNull().unique(),
   configData: text("config_data"),
   cloudConfigUrl: text("cloud_config_url"),
   createdBy: varchar("created_by").notNull(),
-  assignedTo: varchar("assigned_to"),
   agentId: varchar("agent_id"),
   isActive: boolean("is_active").notNull().default(true),
+  durationMonths: integer("duration_months").notNull().default(1),
   expiresAt: timestamp("expires_at"),
-  planName: text("plan_name").notNull().default("Monthly"),
   pricePaid: integer("price_paid").notNull().default(5000),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -45,7 +46,7 @@ export const transactions = pgTable("transactions", {
   type: transactionTypeEnum("type").notNull(),
   amount: integer("amount").notNull(),
   description: text("description"),
-  codeId: varchar("code_id"),
+  subscriberId: varchar("subscriber_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -66,12 +67,22 @@ export const insertAccountSchema = createInsertSchema(accounts).omit({
   password: z.string().min(6),
 });
 
-export const insertVpnCodeSchema = createInsertSchema(vpnCodes).omit({
+export const insertSubscriberSchema = createInsertSchema(subscribers).omit({
   id: true,
   createdAt: true,
   code: true,
   configData: true,
   cloudConfigUrl: true,
+  createdBy: true,
+  agentId: true,
+  pricePaid: true,
+  expiresAt: true,
+  isActive: true,
+}).extend({
+  name: z.string().min(1, "Name required"),
+  deviceId: z.string().optional(),
+  notes: z.string().optional(),
+  durationMonths: z.number().min(1).max(12).default(1),
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
@@ -81,8 +92,8 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
 
 export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
-export type VpnCode = typeof vpnCodes.$inferSelect;
-export type InsertVpnCode = z.infer<typeof insertVpnCodeSchema>;
+export type Subscriber = typeof subscribers.$inferSelect;
+export type InsertSubscriber = z.infer<typeof insertSubscriberSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;

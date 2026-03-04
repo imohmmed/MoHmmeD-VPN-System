@@ -4,8 +4,8 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard, Users, Key, CreditCard, ScrollText, UserCog,
-  Shield, LogOut, ChevronRight, Wifi,
+  LayoutDashboard, Users, CreditCard, ScrollText, UserCog,
+  Shield, LogOut, ChevronRight,
 } from "lucide-react";
 import { useAuth, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -16,15 +16,13 @@ const ownerNav = [
   { title: "Dashboard", url: "/owner", icon: LayoutDashboard },
   { title: "Agents", url: "/owner/agents", icon: UserCog },
   { title: "Users", url: "/owner/users", icon: Users },
-  { title: "VPN Codes", url: "/owner/codes", icon: Key },
   { title: "Transactions", url: "/owner/transactions", icon: CreditCard },
   { title: "Activity Logs", url: "/owner/logs", icon: ScrollText },
 ];
 
 const agentNav = [
   { title: "Dashboard", url: "/agent", icon: LayoutDashboard },
-  { title: "My Users", url: "/agent/users", icon: Users },
-  { title: "VPN Codes", url: "/agent/codes", icon: Key },
+  { title: "Users", url: "/agent/users", icon: Users },
   { title: "Transactions", url: "/agent/transactions", icon: CreditCard },
 ];
 

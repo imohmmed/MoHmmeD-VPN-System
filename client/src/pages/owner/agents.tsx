@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Plus, UserCog, Mail, Key, Users, Ban, CheckCircle,
+  Plus, UserCog, Mail, Users, Ban, CheckCircle,
   Trash2, DollarSign, MoreVertical,
 } from "lucide-react";
 import {
@@ -47,8 +47,7 @@ type Agent = {
   isActive: boolean;
   createdAt: string;
   balance: number;
-  codesCount: number;
-  usersCount: number;
+  subscribersCount: number;
   notes?: string;
 };
 
@@ -166,7 +165,7 @@ export default function AgentsPage() {
                   <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Notes (optional)</FormLabel>
-                      <FormControl><Textarea {...field} placeholder="Any notes about this agent..." /></FormControl>
+                      <FormControl><Textarea {...field} placeholder="Notes about this agent..." /></FormControl>
                     </FormItem>
                   )} />
                   <DialogFooter>
@@ -226,15 +225,9 @@ export default function AgentsPage() {
                     <div className="flex flex-wrap gap-4 text-center">
                       <div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Key className="w-3 h-3" />Codes
+                          <Users className="w-3 h-3" />Subscribers
                         </div>
-                        <p className="font-bold text-foreground text-sm">{agent.codesCount}</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="w-3 h-3" />Users
-                        </div>
-                        <p className="font-bold text-foreground text-sm">{agent.usersCount}</p>
+                        <p className="font-bold text-foreground text-sm">{agent.subscribersCount}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Owes</p>
@@ -251,36 +244,21 @@ export default function AgentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => setPaymentAgentId(agent.id)}
-                          data-testid={`button-payment-${agent.id}`}
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Record Payment
+                        <DropdownMenuItem onClick={() => setPaymentAgentId(agent.id)} data-testid={`button-payment-${agent.id}`}>
+                          <DollarSign className="w-4 h-4 mr-2" />Record Payment
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => suspendMutation.mutate(agent.id)}
-                          data-testid={`button-suspend-${agent.id}`}
-                        >
+                        <DropdownMenuItem onClick={() => suspendMutation.mutate(agent.id)} data-testid={`button-suspend-${agent.id}`}>
                           {agent.isActive
                             ? <><Ban className="w-4 h-4 mr-2" />Suspend</>
                             : <><CheckCircle className="w-4 h-4 mr-2" />Activate</>
                           }
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => setDeleteId(agent.id)}
-                          data-testid={`button-delete-${agent.id}`}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(agent.id)} data-testid={`button-delete-${agent.id}`}>
+                          <Trash2 className="w-4 h-4 mr-2" />Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  {agent.notes && (
-                    <p className="text-xs text-muted-foreground mt-2 pl-14">{agent.notes}</p>
-                  )}
                 </CardContent>
               </Card>
             ))}
@@ -292,17 +270,11 @@ export default function AgentsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Agent?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this agent and all their records. This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete this agent and all their records.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              className="bg-destructive text-destructive-foreground"
-              data-testid="button-confirm-delete"
-            >
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)} className="bg-destructive text-destructive-foreground" data-testid="button-confirm-delete">
               Delete Agent
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -311,9 +283,7 @@ export default function AgentsPage() {
 
       <Dialog open={!!paymentAgentId} onOpenChange={(o) => !o && setPaymentAgentId(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
           <Form {...payForm}>
             <form onSubmit={payForm.handleSubmit((d) =>
               paymentAgentId && paymentMutation.mutate({ id: paymentAgentId, data: d })
@@ -322,13 +292,7 @@ export default function AgentsPage() {
                 <FormItem>
                   <FormLabel>Amount (IQD)</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="5000"
-                      data-testid="input-payment-amount"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    />
+                    <Input type="number" placeholder="5000" data-testid="input-payment-amount" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
