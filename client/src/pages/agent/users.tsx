@@ -106,13 +106,6 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
               {copied === sub.code ? "Copied!" : "Copy"}
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <Link2 className="w-3 h-3 text-blue-500" />
-            <span className="font-mono text-blue-600 dark:text-blue-400 break-all text-[11px]">{`${window.location.origin}/api/cloud-config/${sub.code}`}</span>
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs" data-testid={`button-copy-config-${sub.id}`} onClick={() => onCopy(`${window.location.origin}/api/cloud-config/${sub.code}`)}>
-              {copied === `${window.location.origin}/api/cloud-config/${sub.code}` ? "Copied!" : "Copy"}
-            </Button>
-          </div>
           {sub.deviceId && (
             <div className="flex items-center gap-2 text-xs" data-testid={`text-deviceid-${sub.id}`}>
               <Smartphone className="w-3 h-3 text-muted-foreground" />

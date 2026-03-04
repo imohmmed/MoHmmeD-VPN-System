@@ -352,7 +352,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ balance });
   });
 
-  app.get("/api/cloud-config/:code", async (req, res) => {
+  app.get("/sub/:code", async (req, res) => {
     try {
       const subscriber = await storage.getSubscriberByCode(req.params.code);
       if (!subscriber) return res.status(404).send("Config not found");
@@ -360,8 +360,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
         return res.status(410).send("Config expired");
       }
-      res.setHeader("Content-Type", "text/plain");
-      res.send(subscriber.cloudConfigUrl);
+      const vmessUrl = subscriber.cloudConfigUrl;
+      const subContent = Buffer.from(vmessUrl).toString("base64");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-store");
+      res.setHeader("Content-Disposition", `attachment; filename="${subscriber.name}.txt"`);
+      res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt!).getTime() / 1000)}`);
+      res.setHeader("Profile-Title", `MoHmmeD VPN - ${subscriber.name}`);
+      res.send(subContent);
     } catch (e) {
       res.status(500).send("Server error");
     }
