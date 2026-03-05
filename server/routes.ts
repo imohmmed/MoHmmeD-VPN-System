@@ -426,6 +426,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const parsed = parseVlessLink(vlessLink);
       if (!parsed) return res.status(500).json({ error: "Failed to parse config" });
 
+      parsed.address = "mohmmedvpn.com";
+      parsed.host = "mohmmedvpn.com";
+      parsed.sni = "mohmmedvpn.com";
+      parsed.security = "tls";
+      parsed.port = 443;
+
       const v2rayConfig = {
         dns: {
           hosts: { "domain:googleapis.cn": "googleapis.com" },
@@ -519,12 +525,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!rawLinks.length) return res.status(404).send("No configs available");
 
       const links = rawLinks.map(link => {
-        const hashIndex = link.indexOf("#");
+        let modified = link
+          .replace(/5\.189\.174\.9/g, "mohmmedvpn.com")
+          .replace(/security=none/g, "security=tls")
+          .replace(/:8443/g, ":443");
+        if (!modified.includes("sni=")) {
+          modified = modified.replace("#", "&sni=mohmmedvpn.com#");
+        }
+        if (!modified.includes("host=")) {
+          modified = modified.replace("#", "&host=mohmmedvpn.com#");
+        }
+        const hashIndex = modified.indexOf("#");
         if (hashIndex !== -1) {
           const cleanName = encodeURIComponent(`MoHmmeD VPN - ${subscriber.name}`);
-          return link.substring(0, hashIndex) + "#" + cleanName;
+          modified = modified.substring(0, hashIndex) + "#" + cleanName;
         }
-        return link;
+        return modified;
       });
 
       const subContent = Buffer.from(links.join("\n")).toString("base64");
