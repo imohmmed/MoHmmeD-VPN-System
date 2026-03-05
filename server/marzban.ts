@@ -26,7 +26,11 @@ async function getToken(forceRefresh = false): Promise<string> {
     body: body.toString(),
   });
 
-  if (!res.ok) throw new Error(`Marzban auth failed: ${res.status}`);
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`Marzban auth failed: status=${res.status}, url=${url}, username=${process.env.MARZBAN_USERNAME}, body=${errBody}`);
+    throw new Error(`Marzban auth failed: ${res.status}`);
+  }
   const data = await res.json() as { access_token: string };
   token = data.access_token;
   tokenExpiry = Date.now() + 10 * 60 * 1000;
