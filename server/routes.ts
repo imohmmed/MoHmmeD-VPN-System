@@ -411,6 +411,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/configs/:code.json", async (req, res) => {
     try {
       const code = req.params.code;
+      const did = (req.query.did as string || "").trim();
       const subscriber = await storage.getSubscriberByCode(code);
       if (!subscriber) return res.status(404).json({ error: "Config not found" });
       if (!subscriber.isActive) return res.status(403).json({ error: "Config disabled" });
@@ -418,6 +419,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(410).json({ error: "Config expired" });
       }
       if (!subscriber.marzbanUsername) return res.status(404).json({ error: "No VPN config" });
+      if (subscriber.deviceId && did && subscriber.deviceId.toLowerCase() !== did.toLowerCase()) {
+        return res.status(403).json({ error: "Device not authorized" });
+      }
+      if (subscriber.deviceId && !did) {
+        return res.status(403).json({ error: "Device ID required" });
+      }
 
       const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
       if (!links.length) return res.status(404).json({ error: "No configs available" });
@@ -507,6 +514,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/sub/:code", async (req, res) => {
     try {
+      const did = (req.query.did as string || "").trim();
       const subscriber = await storage.getSubscriberByCode(req.params.code);
       if (!subscriber) return res.status(404).send("Config not found");
       if (!subscriber.isActive) return res.status(403).send("Config disabled");
@@ -514,6 +522,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(410).send("Config expired");
       }
       if (!subscriber.marzbanUsername) return res.status(404).send("No VPN config");
+      if (subscriber.deviceId && did && subscriber.deviceId.toLowerCase() !== did.toLowerCase()) {
+        return res.status(403).send("Device not authorized");
+      }
+      if (subscriber.deviceId && !did) {
+        return res.status(403).send("Device ID required");
+      }
 
       const rawLinks = await getMarzbanUserLinks(subscriber.marzbanUsername);
       if (!rawLinks.length) return res.status(404).send("No configs available");

@@ -112,9 +112,14 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
           {sub.marzbanUsername && (
             <div className="flex items-center gap-2 text-xs">
               <Link2 className="w-3 h-3 text-blue-500" />
-              <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px] truncate max-w-[220px]">Cloud Config URL</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy"}
+              <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px] truncate max-w-[220px]">Cloud Config</span>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" onClick={() => {
+                const url = sub.deviceId
+                  ? `https://mohmmedvpn.com/configs/${sub.code}.json?did=${sub.deviceId}`
+                  : `https://mohmmedvpn.com/configs/${sub.code}.json`;
+                onCopy(url);
+              }}>
+                {copied?.includes(`/configs/${sub.code}.json`) ? "Copied!" : "Copy"}
               </Button>
             </div>
           )}
