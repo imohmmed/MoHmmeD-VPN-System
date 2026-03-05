@@ -64,7 +64,7 @@ export async function createMarzbanUser(username: string, expireTimestamp: numbe
       username,
       status: "active",
       proxies: { vless: { flow: "xtls-rprx-vision" } },
-      inbounds: { vless: ["VLESS_REALITY"] },
+      inbounds: { vless: ["VLESS_REALITY", "VLESS_WS"] },
       expire: expireTimestamp,
       data_limit: 0,
       data_limit_reset_strategy: "no_reset",
@@ -145,6 +145,20 @@ export async function getMarzbanUsers(): Promise<Map<string, { status: string; e
     offset += limit;
   }
   return result;
+}
+
+export async function updateMarzbanUserInbounds(username: string): Promise<void> {
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user/${username}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inbounds: { vless: ["VLESS_REALITY", "VLESS_WS"] },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`Marzban update inbounds failed for ${username}: ${res.status} - ${err}`);
+  }
 }
 
 export async function testMarzbanConnection(): Promise<boolean> {
