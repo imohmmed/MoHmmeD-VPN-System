@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import { resolve } from "path";
-config({ path: resolve(process.cwd(), ".env") });
+config({ path: resolve(process.cwd(), ".env"), override: true });
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
