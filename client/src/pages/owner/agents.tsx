@@ -33,6 +33,7 @@ const createAgentSchema = z.object({
   email: z.string().email("Invalid email"),
   username: z.string().min(3, "Min 3 characters"),
   password: z.string().min(6, "Min 6 characters"),
+  prefix: z.string().min(2, "Min 2 characters").max(15, "Max 15 characters").regex(/^[a-zA-Z0-9]+$/, "English letters and numbers only"),
   notes: z.string().optional(),
 });
 
@@ -64,7 +65,7 @@ export default function AgentsPage() {
 
   const form = useForm({
     resolver: zodResolver(createAgentSchema),
-    defaultValues: { email: "", username: "", password: "", notes: "" },
+    defaultValues: { email: "", username: "", password: "", prefix: "", notes: "" },
   });
 
   const payForm = useForm({
@@ -161,6 +162,13 @@ export default function AgentsPage() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl><Input {...field} type="password" placeholder="••••••••" data-testid="input-agent-password" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="prefix" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prefix (بادئة اسم المشتركين)</FormLabel>
+                      <FormControl><Input {...field} placeholder="مثال: star, moon, vpn1" data-testid="input-agent-prefix" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

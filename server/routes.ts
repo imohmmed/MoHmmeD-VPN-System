@@ -132,7 +132,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/agents", requireAuth(["owner"]), async (req, res) => {
     try {
-      const { email, username, password, notes } = req.body;
+      const { email, username, password, notes, prefix } = req.body;
       if (!email || !username || !password) return res.status(400).json({ message: "Missing fields" });
 
       const existing = await storage.getAccountByEmail(email);
@@ -140,7 +140,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const agent = await storage.createAccount({
         email, username, password, role: "agent",
-        createdBy: req.session.accountId, notes,
+        createdBy: req.session.accountId, notes, prefix: prefix || username,
       });
 
       await storage.createLog({
@@ -233,7 +233,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       expiryDate.setMonth(expiryDate.getMonth() + months);
       const expireTimestamp = Math.floor(expiryDate.getTime() / 1000);
 
-      const marzbanUsername = name.toLowerCase().replace(/[^a-z0-9]/g, "") + "_" + Date.now().toString(36);
+      const account = await storage.getAccount(req.session.accountId!);
+      const prefix = account?.prefix || (req.session.role === "owner" ? "mvpn" : account?.username || "user");
+      const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const marzbanUsername = `${prefix}_${cleanName}_${Date.now().toString(36)}`;
 
       let subscriptionUrl = "";
       try {

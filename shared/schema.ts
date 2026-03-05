@@ -21,6 +21,7 @@ export const accounts = pgTable("accounts", {
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   notes: text("notes"),
+  prefix: text("prefix"),
 });
 
 export const subscribers = pgTable("subscribers", {

@@ -11,7 +11,7 @@ export interface IStorage {
   getAccountByUsername(username: string): Promise<Account | undefined>;
   createAccount(data: {
     email: string; username: string; password: string;
-    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string;
+    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string;
   }): Promise<Account>;
   updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username">>): Promise<Account>;
   deleteAccount(id: string): Promise<void>;
@@ -59,15 +59,16 @@ export class DbStorage implements IStorage {
     return acc;
   }
 
-  async createAccount({ email, username, password, role, createdBy, notes }: {
+  async createAccount({ email, username, password, role, createdBy, notes, prefix }: {
     email: string; username: string; password: string;
-    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string;
+    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string;
   }) {
     const passwordHash = await bcrypt.hash(password, 12);
     const [acc] = await db.insert(accounts).values({
       email, username, passwordHash, role,
       createdBy: createdBy || null,
       notes: notes || null,
+      prefix: prefix || null,
     }).returning();
     return acc;
   }
