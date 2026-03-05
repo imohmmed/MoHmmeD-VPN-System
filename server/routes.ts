@@ -395,8 +395,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       if (!subscriber.marzbanUsername) return res.status(404).send("No VPN config");
 
-      const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
-      if (!links.length) return res.status(404).send("No configs available");
+      const rawLinks = await getMarzbanUserLinks(subscriber.marzbanUsername);
+      if (!rawLinks.length) return res.status(404).send("No configs available");
+
+      const links = rawLinks.map(link => {
+        const hashIndex = link.indexOf("#");
+        if (hashIndex !== -1) {
+          const cleanName = encodeURIComponent(`MoHmmeD VPN - ${subscriber.name}`);
+          return link.substring(0, hashIndex) + "#" + cleanName;
+        }
+        return link;
+      });
 
       const subContent = Buffer.from(links.join("\n")).toString("base64");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
