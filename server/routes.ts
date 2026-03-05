@@ -546,74 +546,155 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const serverPort = parseInt(process.env.VPN_SERVER_PORT || "8443");
       const realityServerName = process.env.REALITY_SERVER_NAME || "yahoo.com";
 
-      const v2rayConfig = {
-        dns: {
-          hosts: { "domain:googleapis.cn": "googleapis.com" },
-          servers: ["1.1.1.1"]
-        },
-        inbounds: [{
-          listen: "127.0.0.1",
-          port: 10808,
-          protocol: "socks",
-          settings: { auth: "noauth", udp: true, userLevel: 8 },
-          sniffing: { destOverride: ["http", "tls"], enabled: true },
-          tag: "socks"
-        }, {
-          listen: "127.0.0.1",
-          port: 10809,
-          protocol: "http",
-          settings: { userLevel: 8 },
-          tag: "http"
-        }],
-        log: { loglevel: "warning" },
-        outbounds: [{
-          mux: { concurrency: 8, enabled: false },
-          protocol: "vless",
-          settings: {
-            vnext: [{
-              address: serverDomain,
-              port: serverPort,
-              users: [{
-                encryption: "none",
-                flow: "xtls-rprx-vision",
-                id: parsed.uuid,
-                level: 8,
-                security: "auto"
+      const configType = req.query.type === "ws" ? "ws" : "reality";
+      const configPrefix = await getConfigPrefix(subscriber);
+      const remarkName = `${configPrefix} - ${subscriber.name}`;
+
+      let v2rayConfig;
+
+      if (configType === "ws") {
+        const wsSNI = process.env.WS_SNI || "m.facebook.com";
+        const wsPort = parseInt(process.env.WS_PORT || "443");
+        const wsPath = process.env.WS_PATH || "/vlessws";
+
+        v2rayConfig = {
+          dns: {
+            hosts: { "domain:googleapis.cn": "googleapis.com" },
+            servers: ["1.1.1.1"]
+          },
+          inbounds: [{
+            listen: "127.0.0.1",
+            port: 10808,
+            protocol: "socks",
+            settings: { auth: "noauth", udp: true, userLevel: 8 },
+            sniffing: { destOverride: ["http", "tls"], enabled: true },
+            tag: "socks"
+          }, {
+            listen: "127.0.0.1",
+            port: 10809,
+            protocol: "http",
+            settings: { userLevel: 8 },
+            tag: "http"
+          }],
+          log: { loglevel: "warning" },
+          outbounds: [{
+            mux: { concurrency: 8, enabled: false },
+            protocol: "vless",
+            settings: {
+              vnext: [{
+                address: serverDomain,
+                port: wsPort,
+                users: [{
+                  encryption: "none",
+                  id: parsed.uuid,
+                  level: 8,
+                  security: "auto"
+                }]
               }]
+            },
+            streamSettings: {
+              network: "ws",
+              security: "tls",
+              tlsSettings: {
+                allowInsecure: true,
+                serverName: wsSNI
+              },
+              wsSettings: {
+                path: wsPath,
+                headers: { Host: wsSNI }
+              }
+            },
+            tag: "proxy"
+          }, {
+            protocol: "freedom",
+            settings: {},
+            tag: "direct"
+          }, {
+            protocol: "blackhole",
+            settings: { response: { type: "http" } },
+            tag: "block"
+          }],
+          remarks: `WS - ${remarkName}`,
+          routing: {
+            domainStrategy: "IPIfNonMatch",
+            rules: [{
+              ip: ["1.1.1.1"],
+              outboundTag: "proxy",
+              port: "53",
+              type: "field"
             }]
+          }
+        };
+      } else {
+        v2rayConfig = {
+          dns: {
+            hosts: { "domain:googleapis.cn": "googleapis.com" },
+            servers: ["1.1.1.1"]
           },
-          streamSettings: {
-            network: "tcp",
-            security: "reality",
-            realitySettings: {
-              publicKey: realityPubKey,
-              fingerprint: "chrome",
-              serverName: realityServerName,
-              shortId: realityShortId,
-              spiderX: ""
-            }
-          },
-          tag: "proxy"
-        }, {
-          protocol: "freedom",
-          settings: {},
-          tag: "direct"
-        }, {
-          protocol: "blackhole",
-          settings: { response: { type: "http" } },
-          tag: "block"
-        }],
-        remarks: `${await getConfigPrefix(subscriber)} - ${subscriber.name}`,
-        routing: {
-          domainStrategy: "IPIfNonMatch",
-          rules: [{
-            ip: ["1.1.1.1"],
-            outboundTag: "proxy",
-            port: "53",
-            type: "field"
-          }]
-        }
-      };
+          inbounds: [{
+            listen: "127.0.0.1",
+            port: 10808,
+            protocol: "socks",
+            settings: { auth: "noauth", udp: true, userLevel: 8 },
+            sniffing: { destOverride: ["http", "tls"], enabled: true },
+            tag: "socks"
+          }, {
+            listen: "127.0.0.1",
+            port: 10809,
+            protocol: "http",
+            settings: { userLevel: 8 },
+            tag: "http"
+          }],
+          log: { loglevel: "warning" },
+          outbounds: [{
+            mux: { concurrency: 8, enabled: false },
+            protocol: "vless",
+            settings: {
+              vnext: [{
+                address: serverDomain,
+                port: serverPort,
+                users: [{
+                  encryption: "none",
+                  flow: "xtls-rprx-vision",
+                  id: parsed.uuid,
+                  level: 8,
+                  security: "auto"
+                }]
+              }]
+            },
+            streamSettings: {
+              network: "tcp",
+              security: "reality",
+              realitySettings: {
+                publicKey: realityPubKey,
+                fingerprint: "chrome",
+                serverName: realityServerName,
+                shortId: realityShortId,
+                spiderX: ""
+              }
+            },
+            tag: "proxy"
+          }, {
+            protocol: "freedom",
+            settings: {},
+            tag: "direct"
+          }, {
+            protocol: "blackhole",
+            settings: { response: { type: "http" } },
+            tag: "block"
+          }],
+          remarks: remarkName,
+          routing: {
+            domainStrategy: "IPIfNonMatch",
+            rules: [{
+              ip: ["1.1.1.1"],
+              outboundTag: "proxy",
+              port: "53",
+              type: "field"
+            }]
+          }
+        };
+      }
 
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Access-Control-Allow-Origin", "*");

@@ -102,11 +102,14 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
 
         <div className="pl-[52px] space-y-1.5">
           {sub.marzbanUsername && (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs flex-wrap">
               <Link2 className="w-3 h-3 text-blue-500" />
               <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px]">Cloud Config</span>
               <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-link-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
                 {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy Link"}
+              </Button>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws`)}>
+                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
               </Button>
             </div>
           )}

@@ -21,10 +21,11 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - Agent accounts can be suspended (can't login) or deleted (all records removed)
 
 ## VPN Configuration
-- Server: 5.189.174.9
-- Protocol: VMess over WebSocket (TLS)
-- Config format: Base64-encoded vmess:// URL (cloud config for NPV Tunnel)
-- Device ID from NPV Tunnel app is embedded in the config path
+- Server: 5.189.174.9 (mohmmedvpn.com)
+- **Reality Config**: VLESS + Reality + TCP on port 8443 (SNI: yahoo.com) — standard VPN
+- **WS Config**: VLESS + WebSocket + TLS on port 443 via Nginx (SNI: m.facebook.com) — data freezing for free social packages
+- Config format: JSON v2ray config for NPV Tunnel cloud config import
+- Two config types available per subscriber: Reality (Copy Link) and WebSocket (Copy WS)
 
 ## Key Pages
 - `/login` - Authentication
@@ -49,6 +50,20 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - `transactions` - Financial transactions per agent
 - `activity_logs` - Audit trail of all actions
 
+## Marzban Integration
+- Connected to Marzban panel at localhost:8000
+- Two inbounds: VLESS_REALITY (port 8443) and VLESS_WS (port 8880 via Nginx on 443)
+- Auto token refresh with retry on 401
+- Sync: subscribers list auto-syncs with Marzban (delete/activate/deactivate) every 60 seconds
+- Token expiry: 30 days with auto-refresh
+
+## VPS Environment Variables
+- `MARZBAN_URL`, `MARZBAN_USERNAME`, `MARZBAN_PASSWORD` — Marzban API connection
+- `REALITY_PUBLIC_KEY`, `REALITY_SHORT_ID`, `REALITY_SERVER_NAME` — Reality config
+- `VPN_SERVER_DOMAIN`, `VPN_SERVER_PORT` — Server address
+- `WS_SNI`, `WS_PORT`, `WS_PATH` — WebSocket config for data freezing
+- `OWNER_PASSWORD`, `SESSION_SECRET`, `DATABASE_URL` — App secrets
+
 ## API Endpoints
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
@@ -58,29 +73,33 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - `DELETE /api/agents/:id` - Delete agent
 - `POST /api/agents/:id/payment` - Record payment
 - `GET/POST /api/subscribers` - List/create subscribers
-- `PATCH /api/subscribers/:id/deactivate` - Deactivate subscriber
+- `PATCH /api/subscribers/:id/toggle` - Toggle subscriber
 - `DELETE /api/subscribers/:id` - Delete subscriber
 - `GET /api/transactions` - List transactions
 - `GET /api/logs` - Activity logs (owner only)
 - `GET /api/stats` - Dashboard stats
+- `GET /configs/:code.json` - Reality config (default)
+- `GET /configs/:code.json?type=ws` - WebSocket config (data freezing)
+- `GET /sub/:code` - Subscription link (both configs)
 
 ## Security
 - Helmet middleware for HTTP security headers
-- Rate limiting: 10 login attempts/15min, 100 API requests/min
+- Rate limiting: 5 login attempts/15min, 15 config requests/15min
 - bcryptjs password hashing (12 rounds)
 - Session cookies: httpOnly, sameSite=lax, secure in production
-- Request body size limited to 1MB
+- Input sanitization (XSS prevention)
+- UUID/code format validation
+- dotenv with override: true for VPS deployment
 
 ## VPS Deployment
-- Deployment files in `deploy/` directory
-- `deploy/setup.sh` - Automated setup script for Ubuntu/Debian VPS
-- `deploy/nginx.conf` - Nginx reverse proxy config with SSL
-- `deploy/ecosystem.config.cjs` - PM2 process manager config
-- `deploy/DEPLOY_GUIDE.md` - Step-by-step deployment instructions
 - Domain: mohmmedvpn.com → VPS 5.189.174.9
 - SSL via Let's Encrypt (certbot)
+- PM2 process manager running dist/index.cjs
+- Nginx reverse proxy for WebSocket VPN on port 443
+- Update command: `cd /var/www/mohmmedvpn && git pull origin main && npm install --include=dev && npx tsx script/build.ts && pm2 restart mohmmedvpn`
 
 ## NPV Tunnel Integration
-- Users copy their Device ID from NPV Tunnel app (More tab)
-- System generates a vmess:// cloud config URL
-- Users import via: NPV Tunnel → Configs → Import Cloud Config
+- Users copy Cloud Config URL from admin panel
+- System generates v2ray JSON config
+- Users import via: NPV Tunnel → Configs → + → Import Cloud Config
+- Two config types: standard (Copy Link) and data-freezing (Copy WS)
