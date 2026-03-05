@@ -6,7 +6,8 @@ import { useLogin } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Shield, Wifi, Lock, Eye, EyeOff } from "lucide-react";
+import { Wifi, Lock, Eye, EyeOff } from "lucide-react";
+import { SiTelegram, SiWhatsapp } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
@@ -43,9 +44,6 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-4">
-            <Shield className="w-8 h-8 text-primary" />
-          </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">MoHmmeD VPN</h1>
           <p className="text-muted-foreground mt-1 text-sm">Secure • Fast • Reliable</p>
         </div>
@@ -129,15 +127,27 @@ export default function LoginPage() {
           </Form>
         </div>
 
-        <div className="flex items-center justify-center gap-6 mt-6 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Wifi className="w-3.5 h-3.5" />
-            Encrypted Connection
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5" />
-            Secure Access
-          </span>
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <a
+            href="https://t.me/mohmmed"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-telegram"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#229ED9]/10 border border-[#229ED9]/20 text-[#229ED9] hover:bg-[#229ED9]/20 transition-colors text-sm font-medium"
+          >
+            <SiTelegram className="w-4 h-4" />
+            Telegram
+          </a>
+          <a
+            href="https://wa.me/9647766699669"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-whatsapp"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-medium"
+          >
+            <SiWhatsapp className="w-4 h-4" />
+            WhatsApp
+          </a>
         </div>
       </div>
     </div>
