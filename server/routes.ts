@@ -521,14 +521,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       };
 
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("Pragma", "no-cache");
       res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "*");
-      res.setHeader("Content-Disposition", `attachment; filename="${subscriber.name}.json"`);
-      res.send(JSON.stringify(v2rayConfig));
+      res.setHeader("Cache-Control", "no-cache, no-store");
+      res.json(v2rayConfig);
     } catch (e) {
       console.error("Config endpoint error:", e);
       res.status(500).json({ error: "Server error" });
