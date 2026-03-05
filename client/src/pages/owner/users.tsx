@@ -51,13 +51,15 @@ type Subscriber = {
   createdAt: string;
   agentId?: string;
   agentName?: string;
+  configUsed?: boolean;
 };
 
-function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
+function SubscriberCard({ sub, onDelete, onToggle, onCopy, onResetConfig, copied }: {
   sub: Subscriber;
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
   onCopy: (text: string) => void;
+  onResetConfig: (id: string) => void;
   copied: string | null;
 }) {
   const isExpired = new Date(sub.expiresAt) < new Date();
@@ -108,12 +110,20 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
             <span className="font-medium text-purple-600 dark:text-purple-400">{sub.agentName || "Owner"}</span>
           </div>
           {sub.marzbanUsername && (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs flex-wrap">
               <Link2 className="w-3 h-3 text-blue-500" />
-              <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px] truncate max-w-[220px]">Cloud Config</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-config-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy"}
+              <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px]">Cloud Config</span>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-link-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
+                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy Link"}
               </Button>
+              {sub.configUsed && (
+                <Badge variant="outline" className="text-xs text-orange-500 border-orange-300">Used</Badge>
+              )}
+              {sub.configUsed && (
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-orange-600" onClick={() => onResetConfig(sub.id)} data-testid={`button-reset-config-${sub.id}`}>
+                  Reset
+                </Button>
+              )}
             </div>
           )}
           {sub.deviceId && (
@@ -162,6 +172,15 @@ export default function OwnerUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
       toast({ title: "Status updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const resetConfigMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/reset-config`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
+      toast({ title: "Config reset - can be used again" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -302,6 +321,7 @@ export default function OwnerUsersPage() {
                 onDelete={(id) => setDeleteId(id)}
                 onToggle={(id) => toggleMutation.mutate(id)}
                 onCopy={handleCopy}
+                onResetConfig={(id) => resetConfigMutation.mutate(id)}
                 copied={copied}
               />
             ))}

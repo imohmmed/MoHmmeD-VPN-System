@@ -25,7 +25,7 @@ export interface IStorage {
     name: string; deviceId?: string; notes?: string;
     durationMonths: number; createdBy: string; agentId?: string;
   }): Promise<Subscriber>;
-  updateSubscriber(id: string, data: Partial<Pick<Subscriber, "isActive" | "name" | "deviceId" | "notes">>): Promise<Subscriber>;
+  updateSubscriber(id: string, data: Partial<Pick<Subscriber, "isActive" | "name" | "deviceId" | "notes" | "configUsed">>): Promise<Subscriber>;
   deleteSubscriber(id: string): Promise<void>;
   deactivateSubscriber(id: string): Promise<Subscriber>;
 

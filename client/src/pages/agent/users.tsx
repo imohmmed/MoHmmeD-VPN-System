@@ -116,12 +116,13 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
                 <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-config-${sub.id}`}
                   onClick={async () => {
                     try {
-                      const res = await fetch(`/configs/${sub.code}.json`);
+                      const res = await fetch(`https://mohmmedvpn.com/configs/${sub.code}.json`);
                       const text = await res.text();
+                      await navigator.clipboard.writeText(text);
                       onCopy(text);
                     } catch { onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`); }
                   }}>
-                  {copied && copied.startsWith('{"dns"') ? "Copied!" : "Copy Config"}
+                  Copy Config
                 </Button>
               </div>
             </>
