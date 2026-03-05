@@ -24,7 +24,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Plus, Users, Trash2, Calendar, Copy, Check, Key,
+  Plus, Users, Trash2, Calendar, Copy, Check,
   Power, Smartphone, Link2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -101,21 +101,30 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
         </div>
 
         <div className="pl-[52px] space-y-1.5">
-          <div className="flex items-center gap-2 text-xs">
-            <Key className="w-3 h-3 text-green-500" />
-            <span className="font-mono font-bold text-green-600 dark:text-green-400">{sub.code}</span>
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" onClick={() => onCopy(sub.code)}>
-              {copied === sub.code ? "Copied!" : "Copy ID"}
-            </Button>
-          </div>
           {sub.marzbanUsername && (
-            <div className="flex items-center gap-2 text-xs">
-              <Link2 className="w-3 h-3 text-blue-500" />
-              <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px] truncate max-w-[220px]">Cloud Config</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-config-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy"}
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center gap-2 text-xs">
+                <Link2 className="w-3 h-3 text-blue-500" />
+                <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px]">Cloud Config</span>
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-link-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
+                  {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy Link"}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Copy className="w-3 h-3 text-green-500" />
+                <span className="font-mono text-green-600 dark:text-green-400 text-[11px]">Config Content</span>
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-config-${sub.id}`}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/configs/${sub.code}.json`);
+                      const text = await res.text();
+                      onCopy(text);
+                    } catch { onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`); }
+                  }}>
+                  {copied && copied.startsWith('{"dns"') ? "Copied!" : "Copy Config"}
+                </Button>
+              </div>
+            </>
           )}
           {sub.deviceId && (
             <div className="flex items-center gap-2 text-xs" data-testid={`text-deviceid-${sub.id}`}>
