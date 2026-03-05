@@ -241,7 +241,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let subscriptionUrl = "";
       try {
         const marzbanResult = await createMarzbanUser(marzbanUsername, expireTimestamp);
-        subscriptionUrl = marzbanResult.subscription_url || "";
+        const subPath = marzbanResult.subscription_url || "";
+        const siteUrl = process.env.SITE_URL || "https://mohmmedvpn.com";
+        subscriptionUrl = subPath.startsWith("http") ? subPath : `${siteUrl}${subPath}`;
       } catch (mErr: any) {
         console.error("Marzban error:", mErr.message);
         return res.status(500).json({ message: "Failed to create VPN user: " + mErr.message });
