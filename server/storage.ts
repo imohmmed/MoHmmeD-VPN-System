@@ -21,6 +21,7 @@ export interface IStorage {
   getSubscribers(agentId?: string): Promise<Subscriber[]>;
   getSubscriber(id: string): Promise<Subscriber | undefined>;
   getSubscriberByCode(code: string): Promise<Subscriber | undefined>;
+  getSubscriberBySubToken(token: string): Promise<Subscriber | undefined>;
   createSubscriber(data: {
     name: string; deviceId?: string; notes?: string;
     durationMonths: number; createdBy: string; agentId?: string;
@@ -109,6 +110,11 @@ export class DbStorage implements IStorage {
   async getSubscriberByCode(code: string) {
     const [sub] = await db.select().from(subscribers).where(eq(subscribers.code, code));
     return sub;
+  }
+
+  async getSubscriberBySubToken(token: string) {
+    const allSubs = await db.select().from(subscribers);
+    return allSubs.find(s => s.subscriptionUrl && s.subscriptionUrl.endsWith(`/sub/${token}`));
   }
 
   async createSubscriber({ name, deviceId, notes, durationMonths, createdBy, agentId, marzbanUsername, subscriptionUrl }: {

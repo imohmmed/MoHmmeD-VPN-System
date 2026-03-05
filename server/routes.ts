@@ -708,8 +708,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/sub/:code", async (req, res) => {
     try {
-      if (!validateCode(req.params.code)) return res.status(400).send("Invalid code format");
-      const subscriber = await storage.getSubscriberByCode(req.params.code);
+      const code = req.params.code;
+      let subscriber;
+      if (validateCode(code)) {
+        subscriber = await storage.getSubscriberByCode(code);
+      } else {
+        subscriber = await storage.getSubscriberBySubToken(code);
+      }
       if (!subscriber) return res.status(404).send("Config not found");
       if (!subscriber.isActive) return res.status(403).send("Config disabled");
       if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
