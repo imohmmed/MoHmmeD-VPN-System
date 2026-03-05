@@ -613,7 +613,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             settings: { response: { type: "http" } },
             tag: "block"
           }],
-          remarks: remarkName
+          remarks: remarkName,
+          routing: {
+            domainStrategy: "IPIfNonMatch",
+            rules: [{
+              ip: ["1.1.1.1"],
+              outboundTag: "proxy",
+              port: "53",
+              type: "field"
+            }]
+          }
         };
       } else {
         v2rayConfig = {
