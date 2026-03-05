@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
-import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection } from "./marzban";
+import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks } from "./marzban";
 
 function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -393,15 +393,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
         return res.status(410).send("Config expired");
       }
-      const vmessUrl = subscriber.cloudConfigUrl;
-      const subContent = Buffer.from(vmessUrl).toString("base64");
+      if (!subscriber.marzbanUsername) return res.status(404).send("No VPN config");
+
+      const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
+      if (!links.length) return res.status(404).send("No configs available");
+
+      const subContent = Buffer.from(links.join("\n")).toString("base64");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-store");
       res.setHeader("Content-Disposition", `attachment; filename="${subscriber.name}.txt"`);
-      res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt!).getTime() / 1000)}`);
+      if (subscriber.expiresAt) {
+        res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt).getTime() / 1000)}`);
+      }
       res.setHeader("Profile-Title", `MoHmmeD VPN - ${subscriber.name}`);
       res.send(subContent);
     } catch (e) {
+      console.error("Sub endpoint error:", e);
       res.status(500).send("Server error");
     }
   });

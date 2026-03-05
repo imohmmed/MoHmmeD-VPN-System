@@ -92,6 +92,16 @@ export async function deleteMarzbanUser(username: string): Promise<void> {
   }
 }
 
+export async function getMarzbanUserLinks(username: string): Promise<string[]> {
+  const tok = await getToken();
+  const res = await fetch(`${getBaseUrl()}/api/user/${username}`, {
+    headers: { "Authorization": `Bearer ${tok}` },
+  });
+  if (!res.ok) throw new Error(`Marzban get user failed: ${res.status}`);
+  const data = await res.json() as { links: string[]; subscription_url: string };
+  return data.links || [];
+}
+
 export async function getMarzbanInbounds(): Promise<Record<string, any[]>> {
   const tok = await getToken();
   const res = await fetch(`${getBaseUrl()}/api/inbounds`, {

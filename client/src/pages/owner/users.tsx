@@ -102,19 +102,22 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
         </div>
 
         <div className="pl-[52px] space-y-1.5">
-          {sub.subscriptionUrl && (
+          <div className="flex items-center gap-2 text-xs">
+            <Key className="w-3 h-3 text-green-500" />
+            <span className="font-mono font-bold text-green-600 dark:text-green-400">{sub.code}</span>
+            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" onClick={() => onCopy(sub.code)}>
+              {copied === sub.code ? "Copied!" : "Copy ID"}
+            </Button>
+          </div>
+          {sub.marzbanUsername && (
             <div className="flex items-center gap-2 text-xs">
-              <Link2 className="w-3 h-3 text-green-500" />
-              <span className="font-mono font-bold text-green-600 dark:text-green-400">{sub.subscriptionUrl}</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" onClick={() => onCopy(sub.subscriptionUrl!)}>
-                {copied === sub.subscriptionUrl ? "Copied!" : "Copy"}
+              <Link2 className="w-3 h-3 text-primary" />
+              <span className="font-mono text-muted-foreground truncate max-w-[200px]">Subscription URL</span>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-primary" onClick={() => onCopy(`https://mohmmedvpn.com/sub/${sub.code}`)}>
+                {copied === `https://mohmmedvpn.com/sub/${sub.code}` ? "Copied!" : "Copy URL"}
               </Button>
             </div>
           )}
-          <div className="flex items-center gap-2 text-xs">
-            <Key className="w-3 h-3 text-primary" />
-            <span className="font-mono text-muted-foreground">{sub.code}</span>
-          </div>
           {sub.deviceId && (
             <div className="flex items-center gap-2 text-xs" data-testid={`text-deviceid-${sub.id}`}>
               <Smartphone className="w-3 h-3 text-muted-foreground" />
