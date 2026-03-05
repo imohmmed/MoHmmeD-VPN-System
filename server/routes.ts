@@ -614,7 +614,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             settings: { response: { type: "http" } },
             tag: "block"
           }],
-          remarks: `WS - ${remarkName}`,
+          remarks: remarkName,
           routing: {
             domainStrategy: "IPIfNonMatch",
             rules: [{
