@@ -110,15 +110,13 @@ export class DbStorage implements IStorage {
     return sub;
   }
 
-  async createSubscriber({ name, deviceId, notes, durationMonths, createdBy, agentId }: {
+  async createSubscriber({ name, deviceId, notes, durationMonths, createdBy, agentId, marzbanUsername, subscriptionUrl }: {
     name: string; deviceId?: string; notes?: string;
     durationMonths: number; createdBy: string; agentId?: string;
+    marzbanUsername?: string; subscriptionUrl?: string;
   }) {
     const code = generateCode();
-    const configData = generateVpnConfig(deviceId);
-    const cloudConfigUrl = generateCloudConfigUrl(code, deviceId);
     const expiresAt = getExpiryDate(durationMonths);
-
     const pricePaid = 5000 * durationMonths;
 
     const [sub] = await db.insert(subscribers).values({
@@ -126,8 +124,10 @@ export class DbStorage implements IStorage {
       deviceId: deviceId || null,
       notes: notes || null,
       code,
-      configData: JSON.stringify(configData),
-      cloudConfigUrl,
+      configData: null,
+      cloudConfigUrl: null,
+      marzbanUsername: marzbanUsername || null,
+      subscriptionUrl: subscriptionUrl || null,
       createdBy,
       agentId: agentId || null,
       durationMonths,

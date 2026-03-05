@@ -37,3 +37,10 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+MARZBAN_URL = "http://127.0.0.1:8000"
+MARZBAN_USERNAME = "admin"
+MARZBAN_PASSWORD = "admin"

@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
+import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection } from "./marzban";
 
 function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -225,15 +226,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { name, deviceId, notes, durationMonths } = req.body;
       if (!name) return res.status(400).json({ message: "Name is required" });
 
+      const months = durationMonths || 1;
       const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
+
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + months);
+      const expireTimestamp = Math.floor(expiryDate.getTime() / 1000);
+
+      const marzbanUsername = name.toLowerCase().replace(/[^a-z0-9]/g, "") + "_" + Date.now().toString(36);
+
+      let subscriptionUrl = "";
+      try {
+        const marzbanResult = await createMarzbanUser(marzbanUsername, expireTimestamp);
+        subscriptionUrl = marzbanResult.subscription_url || "";
+      } catch (mErr: any) {
+        console.error("Marzban error:", mErr.message);
+        return res.status(500).json({ message: "Failed to create VPN user: " + mErr.message });
+      }
 
       const sub = await storage.createSubscriber({
         name,
         deviceId: deviceId || undefined,
         notes: notes || undefined,
-        durationMonths: durationMonths || 1,
+        durationMonths: months,
         createdBy: req.session.accountId!,
         agentId: agentId || undefined,
+        marzbanUsername,
+        subscriptionUrl,
       });
 
       if (agentId) {
@@ -241,7 +260,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           agentId,
           type: "purchase",
           amount: sub.pricePaid,
-          description: `Subscriber: ${name} (${durationMonths || 1} month${(durationMonths || 1) > 1 ? "s" : ""}) - Code: ${sub.code}`,
+          description: `Subscriber: ${name} (${months} month${months > 1 ? "s" : ""}) - Code: ${sub.code}`,
           subscriberId: sub.id,
         });
       }
@@ -268,7 +287,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const sub = await storage.updateSubscriber(req.params.id, { isActive: !existing.isActive });
+    const newActive = !existing.isActive;
+    if (existing.marzbanUsername) {
+      try { await toggleMarzbanUser(existing.marzbanUsername, newActive); } catch (e) { console.error(e); }
+    }
+
+    const sub = await storage.updateSubscriber(req.params.id, { isActive: newActive });
     await storage.createLog({
       accountId: req.session.accountId!,
       action: "deactivate_code",
@@ -284,6 +308,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     if (req.session.role === "agent" && sub.agentId !== req.session.accountId) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (sub.marzbanUsername) {
+      try { await deleteMarzbanUser(sub.marzbanUsername); } catch (e) { console.error(e); }
     }
 
     await storage.createLog({

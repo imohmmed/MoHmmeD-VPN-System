@@ -31,6 +31,8 @@ export const subscribers = pgTable("subscribers", {
   code: text("code").notNull().unique(),
   configData: text("config_data"),
   cloudConfigUrl: text("cloud_config_url"),
+  marzbanUsername: text("marzban_username"),
+  subscriptionUrl: text("subscription_url"),
   createdBy: varchar("created_by").notNull(),
   agentId: varchar("agent_id"),
   isActive: boolean("is_active").notNull().default(true),

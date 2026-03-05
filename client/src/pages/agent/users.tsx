@@ -43,6 +43,8 @@ type Subscriber = {
   notes?: string;
   code: string;
   cloudConfigUrl?: string;
+  marzbanUsername?: string;
+  subscriptionUrl?: string;
   isActive: boolean;
   durationMonths: number;
   expiresAt: string;
@@ -99,12 +101,18 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
         </div>
 
         <div className="pl-[52px] space-y-1.5">
+          {sub.subscriptionUrl && (
+            <div className="flex items-center gap-2 text-xs">
+              <Link2 className="w-3 h-3 text-green-500" />
+              <span className="font-mono font-bold text-green-600 dark:text-green-400">{sub.subscriptionUrl}</span>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" onClick={() => onCopy(sub.subscriptionUrl!)}>
+                {copied === sub.subscriptionUrl ? "Copied!" : "Copy"}
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs">
             <Key className="w-3 h-3 text-primary" />
-            <span className="font-mono font-bold text-foreground">{sub.code}</span>
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs" onClick={() => onCopy(sub.code)}>
-              {copied === sub.code ? "Copied!" : "Copy"}
-            </Button>
+            <span className="font-mono text-muted-foreground">{sub.code}</span>
           </div>
           {sub.deviceId && (
             <div className="flex items-center gap-2 text-xs" data-testid={`text-deviceid-${sub.id}`}>
