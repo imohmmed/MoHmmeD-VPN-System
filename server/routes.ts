@@ -4,6 +4,29 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks } from "./marzban";
 
+function parseVlessLink(link: string): {
+  uuid: string; address: string; port: number;
+  type?: string; security?: string; path?: string;
+  host?: string; sni?: string; flow?: string; encryption?: string;
+} | null {
+  try {
+    const match = link.match(/^vless:\/\/([^@]+)@([^:]+):(\d+)\??(.*)#?.*/);
+    if (!match) return null;
+    const [, uuid, address, portStr, paramsStr] = match;
+    const params = new URLSearchParams(paramsStr.split("#")[0]);
+    return {
+      uuid, address, port: parseInt(portStr),
+      type: params.get("type") || "ws",
+      security: params.get("security") || "none",
+      path: params.get("path") || "/",
+      host: params.get("host") || undefined,
+      sni: params.get("sni") || undefined,
+      flow: params.get("flow") || undefined,
+      encryption: params.get("encryption") || "none",
+    };
+  } catch { return null; }
+}
+
 function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.accountId) {
@@ -383,6 +406,103 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/agents/:id/balance", requireAuth(["owner"]), async (req, res) => {
     const balance = await storage.getAgentBalance(req.params.id);
     res.json({ balance });
+  });
+
+  app.get("/configs/:code.json", async (req, res) => {
+    try {
+      const code = req.params.code;
+      const subscriber = await storage.getSubscriberByCode(code);
+      if (!subscriber) return res.status(404).json({ error: "Config not found" });
+      if (!subscriber.isActive) return res.status(403).json({ error: "Config disabled" });
+      if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
+        return res.status(410).json({ error: "Config expired" });
+      }
+      if (!subscriber.marzbanUsername) return res.status(404).json({ error: "No VPN config" });
+
+      const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
+      if (!links.length) return res.status(404).json({ error: "No configs available" });
+
+      const vlessLink = links[0];
+      const parsed = parseVlessLink(vlessLink);
+      if (!parsed) return res.status(500).json({ error: "Failed to parse config" });
+
+      const v2rayConfig = {
+        dns: {
+          hosts: { "domain:googleapis.cn": "googleapis.com" },
+          servers: ["1.1.1.1"]
+        },
+        inbounds: [{
+          listen: "127.0.0.1",
+          port: 10808,
+          protocol: "socks",
+          settings: { auth: "noauth", udp: true, userLevel: 8 },
+          sniffing: { destOverride: ["http", "tls"], enabled: true },
+          tag: "socks"
+        }, {
+          listen: "127.0.0.1",
+          port: 10809,
+          protocol: "http",
+          settings: { userLevel: 8 },
+          tag: "http"
+        }],
+        log: { loglevel: "warning" },
+        outbounds: [{
+          mux: { concurrency: 8, enabled: false },
+          protocol: "vless",
+          settings: {
+            vnext: [{
+              address: parsed.address,
+              port: parsed.port,
+              users: [{
+                encryption: parsed.encryption || "none",
+                flow: parsed.flow || "",
+                id: parsed.uuid,
+                level: 8,
+                security: "auto"
+              }]
+            }]
+          },
+          streamSettings: {
+            network: parsed.type || "ws",
+            security: parsed.security || "none",
+            wsSettings: parsed.type === "ws" ? {
+              headers: { Host: parsed.host || parsed.address },
+              path: parsed.path || "/"
+            } : undefined,
+            tlsSettings: parsed.security === "tls" ? {
+              allowInsecure: true,
+              serverName: parsed.sni || parsed.host || parsed.address
+            } : undefined
+          },
+          tag: "proxy"
+        }, {
+          protocol: "freedom",
+          settings: {},
+          tag: "direct"
+        }, {
+          protocol: "blackhole",
+          settings: { response: { type: "http" } },
+          tag: "block"
+        }],
+        remarks: `MoHmmeD VPN - ${subscriber.name}`,
+        routing: {
+          domainStrategy: "IPIfNonMatch",
+          rules: [{
+            ip: ["1.1.1.1"],
+            outboundTag: "proxy",
+            port: "53",
+            type: "field"
+          }]
+        }
+      };
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "no-cache, no-store");
+      res.json(v2rayConfig);
+    } catch (e) {
+      console.error("Config endpoint error:", e);
+      res.status(500).json({ error: "Server error" });
+    }
   });
 
   app.get("/sub/:code", async (req, res) => {
