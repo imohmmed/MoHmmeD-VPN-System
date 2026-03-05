@@ -523,6 +523,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Cache-Control", "no-cache, no-store");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET");
+      res.setHeader("Access-Control-Allow-Headers", "*");
       res.json(v2rayConfig);
     } catch (e) {
       console.error("Config endpoint error:", e);
@@ -587,6 +590,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const subContent = Buffer.from(links.join("\n")).toString("base64");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-store");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET");
+      res.setHeader("Access-Control-Allow-Headers", "*");
       res.setHeader("Content-Disposition", `attachment; filename="${subscriber.name}.txt"`);
       if (subscriber.expiresAt) {
         res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt).getTime() / 1000)}`);
