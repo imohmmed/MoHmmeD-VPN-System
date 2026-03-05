@@ -5,8 +5,13 @@ function getBaseUrl(): string {
   return process.env.MARZBAN_URL || "http://127.0.0.1:8000";
 }
 
-async function getToken(): Promise<string> {
-  if (token && Date.now() < tokenExpiry) return token;
+function clearToken() {
+  token = null;
+  tokenExpiry = 0;
+}
+
+async function getToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && token && Date.now() < tokenExpiry) return token;
 
   const url = `${getBaseUrl()}/api/admin/token`;
   const body = new URLSearchParams({
@@ -24,21 +29,33 @@ async function getToken(): Promise<string> {
   if (!res.ok) throw new Error(`Marzban auth failed: ${res.status}`);
   const data = await res.json() as { access_token: string };
   token = data.access_token;
-  tokenExpiry = Date.now() + 55 * 60 * 1000;
+  tokenExpiry = Date.now() + 10 * 60 * 1000;
   return token;
+}
+
+async function marzbanFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  let tok = await getToken();
+  options.headers = { ...options.headers as Record<string, string>, "Authorization": `Bearer ${tok}` };
+
+  let res = await fetch(url, options);
+
+  if (res.status === 401) {
+    clearToken();
+    tok = await getToken(true);
+    options.headers = { ...options.headers as Record<string, string>, "Authorization": `Bearer ${tok}` };
+    res = await fetch(url, options);
+  }
+
+  return res;
 }
 
 export async function createMarzbanUser(username: string, expireTimestamp: number): Promise<{
   subscription_url: string;
   links: string[];
 }> {
-  const tok = await getToken();
-  const res = await fetch(`${getBaseUrl()}/api/user`, {
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user`, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${tok}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       username,
       status: "active",
@@ -64,13 +81,9 @@ export async function createMarzbanUser(username: string, expireTimestamp: numbe
 }
 
 export async function toggleMarzbanUser(username: string, active: boolean): Promise<void> {
-  const tok = await getToken();
-  const res = await fetch(`${getBaseUrl()}/api/user/${username}`, {
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user/${username}`, {
     method: "PUT",
-    headers: {
-      "Authorization": `Bearer ${tok}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       status: active ? "active" : "disabled",
     }),
@@ -82,10 +95,8 @@ export async function toggleMarzbanUser(username: string, active: boolean): Prom
 }
 
 export async function deleteMarzbanUser(username: string): Promise<void> {
-  const tok = await getToken();
-  const res = await fetch(`${getBaseUrl()}/api/user/${username}`, {
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user/${username}`, {
     method: "DELETE",
-    headers: { "Authorization": `Bearer ${tok}` },
   });
   if (!res.ok) {
     const err = await res.text();
@@ -94,27 +105,21 @@ export async function deleteMarzbanUser(username: string): Promise<void> {
 }
 
 export async function getMarzbanUserLinks(username: string): Promise<string[]> {
-  const tok = await getToken();
-  const res = await fetch(`${getBaseUrl()}/api/user/${username}`, {
-    headers: { "Authorization": `Bearer ${tok}` },
-  });
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user/${username}`);
   if (!res.ok) throw new Error(`Marzban get user failed: ${res.status}`);
   const data = await res.json() as { links: string[]; subscription_url: string };
   return data.links || [];
 }
 
 export async function getMarzbanInbounds(): Promise<Record<string, any[]>> {
-  const tok = await getToken();
-  const res = await fetch(`${getBaseUrl()}/api/inbounds`, {
-    headers: { "Authorization": `Bearer ${tok}` },
-  });
+  const res = await marzbanFetch(`${getBaseUrl()}/api/inbounds`);
   if (!res.ok) throw new Error(`Marzban get inbounds failed: ${res.status}`);
   return await res.json() as Record<string, any[]>;
 }
 
 export async function testMarzbanConnection(): Promise<boolean> {
   try {
-    await getToken();
+    await getToken(true);
     return true;
   } catch {
     return false;
