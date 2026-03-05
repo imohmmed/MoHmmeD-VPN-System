@@ -42,8 +42,8 @@ export async function createMarzbanUser(username: string, expireTimestamp: numbe
     body: JSON.stringify({
       username,
       status: "active",
-      proxies: { vmess: {} },
-      inbounds: {},
+      proxies: { vless: { flow: "" } },
+      inbounds: { vless: ["VLESS_WS"] },
       expire: expireTimestamp,
       data_limit: 0,
       data_limit_reset_strategy: "no_reset",
