@@ -47,6 +47,7 @@ export async function createMarzbanUser(username: string, expireTimestamp: numbe
       expire: expireTimestamp,
       data_limit: 0,
       data_limit_reset_strategy: "no_reset",
+      ip_limit: 1,
     }),
   });
 
