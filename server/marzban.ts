@@ -28,7 +28,7 @@ async function getToken(forceRefresh = false): Promise<string> {
 
   if (!res.ok) {
     const errBody = await res.text();
-    console.error(`Marzban auth failed: status=${res.status}, url=${url}, username=${process.env.MARZBAN_USERNAME}, body=${errBody}`);
+    console.error(`Marzban auth failed: status=${res.status}, body=${errBody}`);
     throw new Error(`Marzban auth failed: ${res.status}`);
   }
   const data = await res.json() as { access_token: string };
@@ -119,6 +119,32 @@ export async function getMarzbanInbounds(): Promise<Record<string, any[]>> {
   const res = await marzbanFetch(`${getBaseUrl()}/api/inbounds`);
   if (!res.ok) throw new Error(`Marzban get inbounds failed: ${res.status}`);
   return await res.json() as Record<string, any[]>;
+}
+
+export async function getMarzbanUser(username: string): Promise<{ status: string; expire: number | null } | null> {
+  const res = await marzbanFetch(`${getBaseUrl()}/api/user/${username}`);
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  const data = await res.json() as { status: string; expire: number | null };
+  return { status: data.status, expire: data.expire };
+}
+
+export async function getMarzbanUsers(): Promise<Map<string, { status: string; expire: number | null }>> {
+  const result = new Map<string, { status: string; expire: number | null }>();
+  let offset = 0;
+  const limit = 100;
+  while (true) {
+    const res = await marzbanFetch(`${getBaseUrl()}/api/users?offset=${offset}&limit=${limit}`);
+    if (!res.ok) break;
+    const data = await res.json() as { users: Array<{ username: string; status: string; expire: number | null }> };
+    if (!data.users || data.users.length === 0) break;
+    for (const u of data.users) {
+      result.set(u.username, { status: u.status, expire: u.expire });
+    }
+    if (data.users.length < limit) break;
+    offset += limit;
+  }
+  return result;
 }
 
 export async function testMarzbanConnection(): Promise<boolean> {

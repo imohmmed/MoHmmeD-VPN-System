@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
-import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks } from "./marzban";
+import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks, getMarzbanUsers } from "./marzban";
 
 function sanitize(input: string): string {
   return input
@@ -291,9 +291,54 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ===== SUBSCRIBERS (merged users + codes) =====
+  let lastSyncTime = 0;
+  const SYNC_INTERVAL = 60 * 1000;
+
+  async function syncWithMarzban(subs: any[]): Promise<any[]> {
+    try {
+      if (Date.now() - lastSyncTime < SYNC_INTERVAL) return subs;
+      lastSyncTime = Date.now();
+
+      const marzbanUsers = await getMarzbanUsers();
+      if (marzbanUsers.size === 0) return subs;
+
+      const updatedSubs = [];
+      for (const sub of subs) {
+        if (!sub.marzbanUsername) {
+          updatedSubs.push(sub);
+          continue;
+        }
+
+        const mUser = marzbanUsers.get(sub.marzbanUsername);
+
+        if (!mUser) {
+          await storage.deleteSubscriber(sub.id);
+          console.log(`Sync: deleted subscriber ${sub.name} (${sub.marzbanUsername}) - not found in Marzban`);
+          continue;
+        }
+
+        const marzbanActive = mUser.status === "active";
+        if (sub.isActive !== marzbanActive) {
+          await storage.updateSubscriber(sub.id, { isActive: marzbanActive });
+          sub.isActive = marzbanActive;
+          console.log(`Sync: ${marzbanActive ? "activated" : "deactivated"} subscriber ${sub.name} (${sub.marzbanUsername})`);
+        }
+
+        updatedSubs.push(sub);
+      }
+
+      return updatedSubs;
+    } catch (e) {
+      console.error("Marzban sync error:", e);
+      return subs;
+    }
+  }
+
   app.get("/api/subscribers", requireAuth(["owner", "agent"]), async (req, res) => {
     const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
-    const subs = await storage.getSubscribers(agentId);
+    let subs = await storage.getSubscribers(agentId);
+
+    subs = await syncWithMarzban(subs);
 
     if (req.session.role === "owner") {
       const agents = await storage.getAgents();
