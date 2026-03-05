@@ -26,8 +26,21 @@ declare module "http" {
 }
 
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: isProd ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+    }
+  } : false,
   crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 if (isProd) {
@@ -44,6 +57,14 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+
+app.use((req, res, next) => {
+  const blocked = [".env", ".git", "node_modules", ".sql", "drizzle.config", "package.json"];
+  if (blocked.some(b => req.path.toLowerCase().includes(b))) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next();
+});
 
 const PgSession = connectPgSimple(session);
 const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });

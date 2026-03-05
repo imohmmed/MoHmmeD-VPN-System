@@ -4,6 +4,15 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks } from "./marzban";
 
+function sanitize(input: string): string {
+  return input
+    .replace(/[<>]/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    .trim()
+    .substring(0, 500);
+}
+
 async function getConfigPrefix(subscriber: any): Promise<string> {
   if (subscriber.agentId) {
     const agent = await storage.getAccount(subscriber.agentId);
@@ -50,7 +59,11 @@ function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
 
 async function seedOwner() {
   const email = process.env.OWNER_EMAIL || "it.mohmmed@yahoo.com";
-  const password = process.env.OWNER_PASSWORD || "ZVwas781)@@";
+  const password = process.env.OWNER_PASSWORD;
+  if (!password) {
+    console.error("WARNING: OWNER_PASSWORD not set in environment variables");
+    return;
+  }
   const existing = await storage.getAccountByEmail(email);
   if (!existing) {
     await storage.createAccount({
@@ -59,7 +72,7 @@ async function seedOwner() {
       password,
       role: "owner",
     });
-    console.log("Owner account seeded — change the password after first login");
+    console.log("Owner account seeded");
   }
 }
 
@@ -83,6 +96,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.use("/api/", apiLimiter);
+
+  const configLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 15,
+    message: { error: "Too many config requests, try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown",
+  });
+
+  app.use("/configs/", configLimiter);
+  app.use("/sub/", configLimiter);
 
   // ===== AUTH =====
   app.post("/api/auth/login", loginLimiter, async (req, res) => {
@@ -167,12 +192,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { email, username, password, notes, prefix } = req.body;
       if (!email || !username || !password) return res.status(400).json({ message: "Missing fields" });
 
-      const existing = await storage.getAccountByEmail(email);
+      const cleanEmail = sanitize(email).toLowerCase();
+      const cleanUsername = sanitize(username);
+      const cleanPrefix = prefix ? sanitize(prefix) : cleanUsername;
+
+      const existing = await storage.getAccountByEmail(cleanEmail);
       if (existing) return res.status(409).json({ message: "Email already exists" });
 
       const agent = await storage.createAccount({
-        email, username, password, role: "agent",
-        createdBy: req.session.accountId, notes, prefix: prefix || username,
+        email: cleanEmail, username: cleanUsername, password, role: "agent",
+        createdBy: req.session.accountId, notes: notes ? sanitize(notes) : undefined, prefix: cleanPrefix,
       });
 
       await storage.createLog({
@@ -266,8 +295,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/subscribers", requireAuth(["owner", "agent"]), async (req, res) => {
     try {
-      const { name, deviceId, notes, durationMonths } = req.body;
-      if (!name) return res.status(400).json({ message: "Name is required" });
+      const { name: rawName, deviceId, notes, durationMonths } = req.body;
+      if (!rawName) return res.status(400).json({ message: "Name is required" });
+      const name = sanitize(rawName);
 
       const months = durationMonths || 1;
       const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
@@ -294,8 +324,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const sub = await storage.createSubscriber({
         name,
-        deviceId: deviceId || undefined,
-        notes: notes || undefined,
+        deviceId: deviceId ? sanitize(deviceId) : undefined,
+        notes: notes ? sanitize(notes) : undefined,
         durationMonths: months,
         createdBy: req.session.accountId!,
         agentId: agentId || undefined,
