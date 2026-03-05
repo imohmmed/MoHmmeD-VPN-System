@@ -40,7 +40,6 @@ export const subscribers = pgTable("subscribers", {
   durationMonths: integer("duration_months").notNull().default(1),
   expiresAt: timestamp("expires_at"),
   pricePaid: integer("price_paid").notNull().default(5000),
-  configUsed: boolean("config_used").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

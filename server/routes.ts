@@ -428,15 +428,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ balance });
   });
 
-  app.patch("/api/subscribers/:id/reset-config", requireAuth(["owner"]), async (req, res) => {
-    try {
-      const sub = await storage.updateSubscriber(req.params.id, { configUsed: false } as any);
-      res.json(sub);
-    } catch (err: any) {
-      res.status(500).json({ message: err.message });
-    }
-  });
-
   app.get("/configs/:code.json", async (req, res) => {
     try {
       const code = req.params.code;
@@ -447,7 +438,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(410).json({ error: "Config expired" });
       }
       if (!subscriber.marzbanUsername) return res.status(404).json({ error: "No VPN config" });
-      if (subscriber.configUsed) return res.status(410).json({ error: "Config already used" });
 
       const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
       if (!links.length) return res.status(404).json({ error: "No configs available" });
@@ -455,8 +445,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const vlessLink = links[0];
       const parsed = parseVlessLink(vlessLink);
       if (!parsed) return res.status(500).json({ error: "Failed to parse config" });
-
-      await storage.updateSubscriber(subscriber.id, { configUsed: true } as any);
 
       const realityPubKey = process.env.REALITY_PUBLIC_KEY || "";
       const realityShortId = process.env.REALITY_SHORT_ID || "";
