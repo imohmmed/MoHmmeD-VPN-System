@@ -426,11 +426,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const parsed = parseVlessLink(vlessLink);
       if (!parsed) return res.status(500).json({ error: "Failed to parse config" });
 
-      parsed.address = "mohmmedvpn.com";
-      parsed.host = "mohmmedvpn.com";
-      parsed.sni = "mohmmedvpn.com";
-      parsed.security = "tls";
-      parsed.port = 443;
+      const realityPubKey = process.env.REALITY_PUBLIC_KEY || "";
+      const realityShortId = process.env.REALITY_SHORT_ID || "";
+      const serverDomain = process.env.VPN_SERVER_DOMAIN || "mohmmedvpn.com";
+      const serverPort = parseInt(process.env.VPN_SERVER_PORT || "8443");
+      const realityServerName = process.env.REALITY_SERVER_NAME || "yahoo.com";
 
       const v2rayConfig = {
         dns: {
@@ -457,11 +457,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           protocol: "vless",
           settings: {
             vnext: [{
-              address: parsed.address,
-              port: parsed.port,
+              address: serverDomain,
+              port: serverPort,
               users: [{
-                encryption: parsed.encryption || "none",
-                flow: parsed.flow || "",
+                encryption: "none",
+                flow: "xtls-rprx-vision",
                 id: parsed.uuid,
                 level: 8,
                 security: "auto"
@@ -469,16 +469,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             }]
           },
           streamSettings: {
-            network: parsed.type || "ws",
-            security: parsed.security || "none",
-            wsSettings: parsed.type === "ws" ? {
-              headers: { Host: parsed.host || parsed.address },
-              path: parsed.path || "/"
-            } : undefined,
-            tlsSettings: parsed.security === "tls" ? {
-              allowInsecure: true,
-              serverName: parsed.sni || parsed.host || parsed.address
-            } : undefined
+            network: "tcp",
+            security: "reality",
+            realitySettings: {
+              publicKey: realityPubKey,
+              fingerprint: "chrome",
+              serverName: realityServerName,
+              shortId: realityShortId,
+              spiderX: ""
+            }
           },
           tag: "proxy"
         }, {
@@ -524,16 +523,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const rawLinks = await getMarzbanUserLinks(subscriber.marzbanUsername);
       if (!rawLinks.length) return res.status(404).send("No configs available");
 
+      const serverDomain = process.env.VPN_SERVER_DOMAIN || "mohmmedvpn.com";
+      const realityPubKey = process.env.REALITY_PUBLIC_KEY || "";
+      const realityShortId = process.env.REALITY_SHORT_ID || "";
+      const realitySNI = process.env.REALITY_SERVER_NAME || "yahoo.com";
+      const serverPort = process.env.VPN_SERVER_PORT || "8443";
+
       const links = rawLinks.map(link => {
         let modified = link
-          .replace(/5\.189\.174\.9/g, "mohmmedvpn.com")
-          .replace(/security=none/g, "security=tls")
-          .replace(/:8443/g, ":443");
+          .replace(/5\.189\.174\.9/g, serverDomain)
+          .replace(/security=none/g, "security=reality")
+          .replace(/security=tls/g, "security=reality")
+          .replace(/:8443/g, `:${serverPort}`);
         if (!modified.includes("sni=")) {
-          modified = modified.replace("#", "&sni=mohmmedvpn.com#");
+          modified = modified.replace("#", `&sni=${realitySNI}#`);
+        } else {
+          modified = modified.replace(/sni=[^&]*/g, `sni=${realitySNI}`);
         }
-        if (!modified.includes("host=")) {
-          modified = modified.replace("#", "&host=mohmmedvpn.com#");
+        if (modified.includes("type=ws")) {
+          modified = modified.replace(/type=ws/g, "type=tcp");
+        }
+        if (!modified.includes("fp=")) {
+          modified = modified.replace("#", "&fp=chrome#");
+        }
+        if (!modified.includes("pbk=")) {
+          modified = modified.replace("#", `&pbk=${realityPubKey}#`);
+        }
+        if (!modified.includes("sid=")) {
+          modified = modified.replace("#", `&sid=${realityShortId}#`);
+        }
+        if (!modified.includes("flow=")) {
+          modified = modified.replace("?", "?flow=xtls-rprx-vision&");
         }
         const hashIndex = modified.indexOf("#");
         if (hashIndex !== -1) {
