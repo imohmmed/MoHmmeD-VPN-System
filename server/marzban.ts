@@ -33,7 +33,7 @@ async function getToken(forceRefresh = false): Promise<string> {
   }
   const data = await res.json() as { access_token: string };
   token = data.access_token;
-  tokenExpiry = Date.now() + 10 * 60 * 1000;
+  tokenExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
   return token;
 }
 
