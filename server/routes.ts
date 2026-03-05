@@ -521,9 +521,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       };
 
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Cache-Control", "no-cache, no-store");
-      res.json(v2rayConfig);
+      res.send(JSON.stringify(v2rayConfig));
     } catch (e) {
       console.error("Config endpoint error:", e);
       res.status(500).json({ error: "Server error" });
