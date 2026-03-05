@@ -6,11 +6,23 @@ import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanCon
 
 function sanitize(input: string): string {
   return input
-    .replace(/[<>]/g, "")
+    .replace(/[<>&"']/g, (c) => {
+      const map: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#x27;" };
+      return map[c] || c;
+    })
     .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+    .replace(/data:/gi, "")
     .trim()
     .substring(0, 500);
+}
+
+function validateCode(code: string): boolean {
+  return /^MVN-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
+}
+
+function validateUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
 async function getConfigPrefix(subscriber: any): Promise<string> {
@@ -81,7 +93,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 5,
     message: { message: "Too many login attempts, try again after 15 minutes" },
     standardHeaders: true,
     legacyHeaders: false,
@@ -103,7 +115,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     message: { error: "Too many config requests, try again later" },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown",
   });
 
   app.use("/configs/", configLimiter);
@@ -162,6 +173,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const agent = await storage.getAccount(req.params.id);
     if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
 
@@ -221,6 +233,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.patch("/api/agents/:id/suspend", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const agent = await storage.getAccount(req.params.id);
     if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
 
@@ -237,6 +250,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const agent = await storage.getAccount(req.params.id);
     if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
 
@@ -252,8 +266,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/agents/:id/payment", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const { amount, description } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ message: "Invalid amount" });
+    if (!amount || typeof amount !== "number" || amount <= 0 || amount > 99999999) return res.status(400).json({ message: "Invalid amount" });
 
     const agent = await storage.getAccount(req.params.id);
     if (!agent) return res.status(404).json({ message: "Agent not found" });
@@ -358,6 +373,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.patch("/api/subscribers/:id/toggle", requireAuth(["owner", "agent"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const existing = await storage.getSubscriber(req.params.id);
     if (!existing) return res.status(404).json({ message: "Subscriber not found" });
 
@@ -381,6 +397,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete("/api/subscribers/:id", requireAuth(["owner", "agent"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const sub = await storage.getSubscriber(req.params.id);
     if (!sub) return res.status(404).json({ message: "Subscriber not found" });
 
@@ -454,6 +471,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/agents/:id/balance", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const balance = await storage.getAgentBalance(req.params.id);
     res.json({ balance });
   });
@@ -461,6 +479,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/configs/:code.json", async (req, res) => {
     try {
       const code = req.params.code;
+      if (!validateCode(code)) return res.status(400).json({ error: "Invalid code format" });
       const subscriber = await storage.getSubscriberByCode(code);
       if (!subscriber) return res.status(404).json({ error: "Config not found" });
       if (!subscriber.isActive) return res.status(403).json({ error: "Config disabled" });
@@ -563,6 +582,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/sub/:code", async (req, res) => {
     try {
+      if (!validateCode(req.params.code)) return res.status(400).send("Invalid code format");
       const subscriber = await storage.getSubscriberByCode(req.params.code);
       if (!subscriber) return res.status(404).send("Config not found");
       if (!subscriber.isActive) return res.status(403).send("Config disabled");

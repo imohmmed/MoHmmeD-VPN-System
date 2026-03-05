@@ -113,7 +113,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      const sensitiveRoutes = ["/api/auth/login", "/api/auth/logout", "/api/agents"];
+      if (capturedJsonResponse && !sensitiveRoutes.some(r => path.startsWith(r))) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
       log(logLine);
@@ -128,10 +129,9 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
     console.error("Internal Server Error:", err);
     if (res.headersSent) return next(err);
-    return res.status(status).json({ message });
+    return res.status(status).json({ message: "Internal Server Error" });
   });
 
   if (process.env.NODE_ENV === "production") {
