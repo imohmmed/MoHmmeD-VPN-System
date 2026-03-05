@@ -531,6 +531,49 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/c/:code", async (req, res) => {
+    try {
+      const code = req.params.code;
+      const subscriber = await storage.getSubscriberByCode(code);
+      if (!subscriber) return res.status(404).send("Config not found");
+      if (!subscriber.isActive) return res.status(403).send("Config disabled");
+      if (subscriber.expiresAt && new Date(subscriber.expiresAt) < new Date()) {
+        return res.status(410).send("Config expired");
+      }
+      if (!subscriber.marzbanUsername) return res.status(404).send("No VPN config");
+
+      const links = await getMarzbanUserLinks(subscriber.marzbanUsername);
+      if (!links.length) return res.status(404).send("No configs available");
+
+      const vlessLink = links[0];
+      const parsed = parseVlessLink(vlessLink);
+      if (!parsed) return res.status(500).send("Failed to parse config");
+
+      const realityPubKey = process.env.REALITY_PUBLIC_KEY || "";
+      const realityShortId = process.env.REALITY_SHORT_ID || "";
+      const serverDomain = process.env.VPN_SERVER_DOMAIN || "mohmmedvpn.com";
+      const serverPort = parseInt(process.env.VPN_SERVER_PORT || "8443");
+      const realityServerName = process.env.REALITY_SERVER_NAME || "yahoo.com";
+      const configPrefix = await getConfigPrefix(subscriber);
+
+      const v2rayConfig = {
+        dns: { hosts: { "domain:googleapis.cn": "googleapis.com" }, servers: ["1.1.1.1"] },
+        inbounds: [{ listen: "127.0.0.1", port: 10808, protocol: "socks", settings: { auth: "noauth", udp: true, userLevel: 8 }, sniffing: { destOverride: ["http", "tls"], enabled: true }, tag: "socks" }, { listen: "127.0.0.1", port: 10809, protocol: "http", settings: { userLevel: 8 }, tag: "http" }],
+        log: { loglevel: "warning" },
+        outbounds: [{ mux: { concurrency: 8, enabled: false }, protocol: "vless", settings: { vnext: [{ address: serverDomain, port: serverPort, users: [{ encryption: "none", flow: "xtls-rprx-vision", id: parsed.uuid, level: 8, security: "auto" }] }] }, streamSettings: { network: "tcp", security: "reality", realitySettings: { publicKey: realityPubKey, fingerprint: "chrome", serverName: realityServerName, shortId: realityShortId, spiderX: "" } }, tag: "proxy" }, { protocol: "freedom", settings: {}, tag: "direct" }, { protocol: "blackhole", settings: { response: { type: "http" } }, tag: "block" }],
+        remarks: `${configPrefix} - ${subscriber.name}`,
+        routing: { domainStrategy: "IPIfNonMatch", rules: [{ ip: ["1.1.1.1"], outboundTag: "proxy", port: "53", type: "field" }] }
+      };
+
+      const jsonStr = JSON.stringify(v2rayConfig);
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${configPrefix} - ${subscriber.name}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}.card{background:#1a1a1a;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center}h1{font-size:20px;margin-bottom:8px}p{color:#888;font-size:14px;margin-bottom:24px}.btn{background:#3b82f6;color:#fff;border:none;border-radius:12px;padding:16px 32px;font-size:18px;font-weight:bold;cursor:pointer;width:100%;transition:0.2s}.btn:active{transform:scale(0.97)}.btn.ok{background:#22c55e}.info{margin-top:16px;color:#666;font-size:12px}</style></head><body><div class="card"><h1>${configPrefix}</h1><p>${subscriber.name}</p><button class="btn" id="copyBtn" onclick="copyConfig()">Copy Config</button><p class="info">After copying, open NPV Tunnel → Import config from Clipboard</p></div><script>const cfg=${jsonStr};function copyConfig(){navigator.clipboard.writeText(JSON.stringify(cfg)).then(()=>{const b=document.getElementById('copyBtn');b.textContent='Copied!';b.classList.add('ok');setTimeout(()=>{b.textContent='Copy Config';b.classList.remove('ok')},2000)}).catch(()=>{const t=document.createElement('textarea');t.value=JSON.stringify(cfg);document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);const b=document.getElementById('copyBtn');b.textContent='Copied!';b.classList.add('ok')})}</script></body></html>`);
+    } catch (e) {
+      res.status(500).send("Server error");
+    }
+  });
+
   app.get("/sub/:code", async (req, res) => {
     try {
       const subscriber = await storage.getSubscriberByCode(req.params.code);
