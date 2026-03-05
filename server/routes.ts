@@ -558,27 +558,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const wsPath = process.env.WS_PATH || "/vlessws";
 
         v2rayConfig = {
-          dns: {
-            hosts: { "domain:googleapis.cn": "googleapis.com" },
-            servers: ["1.1.1.1"]
-          },
-          inbounds: [{
-            listen: "127.0.0.1",
-            port: 10808,
-            protocol: "socks",
-            settings: { auth: "noauth", udp: true, userLevel: 8 },
-            sniffing: { destOverride: ["http", "tls"], enabled: true },
-            tag: "socks"
-          }, {
-            listen: "127.0.0.1",
-            port: 10809,
-            protocol: "http",
-            settings: { userLevel: 8 },
-            tag: "http"
-          }],
           log: { loglevel: "warning" },
           outbounds: [{
-            mux: { concurrency: 8, enabled: false },
             protocol: "vless",
             settings: {
               vnext: [{
@@ -586,9 +567,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 port: wsPort,
                 users: [{
                   encryption: "none",
-                  id: parsed.uuid,
-                  level: 8,
-                  security: "auto"
+                  id: parsed.uuid
                 }]
               }]
             },
@@ -609,21 +588,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             protocol: "freedom",
             settings: {},
             tag: "direct"
-          }, {
-            protocol: "blackhole",
-            settings: { response: { type: "http" } },
-            tag: "block"
           }],
-          remarks: remarkName,
-          routing: {
-            domainStrategy: "IPIfNonMatch",
-            rules: [{
-              ip: ["1.1.1.1"],
-              outboundTag: "proxy",
-              port: "53",
-              type: "field"
-            }]
-          }
+          remarks: remarkName
         };
       } else {
         v2rayConfig = {
