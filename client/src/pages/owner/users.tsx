@@ -24,8 +24,8 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Plus, Users, Trash2, Calendar, Copy, Check, Key,
-  Power, Smartphone, Link2,
+  Plus, Users, Trash2, Calendar, Copy, Check,
+  Power, Smartphone, Link2, UserCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -50,6 +50,7 @@ type Subscriber = {
   expiresAt: string;
   createdAt: string;
   agentId?: string;
+  agentName?: string;
 };
 
 function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
@@ -103,11 +104,8 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
 
         <div className="pl-[52px] space-y-1.5">
           <div className="flex items-center gap-2 text-xs">
-            <Key className="w-3 h-3 text-green-500" />
-            <span className="font-mono font-bold text-green-600 dark:text-green-400">{sub.code}</span>
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" onClick={() => onCopy(sub.code)}>
-              {copied === sub.code ? "Copied!" : "Copy ID"}
-            </Button>
+            <UserCheck className="w-3 h-3 text-purple-500" />
+            <span className="font-medium text-purple-600 dark:text-purple-400">{sub.agentName || "Owner"}</span>
           </div>
           {sub.marzbanUsername && (
             <div className="flex items-center gap-2 text-xs">

@@ -4,6 +4,15 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { createMarzbanUser, toggleMarzbanUser, deleteMarzbanUser, testMarzbanConnection, getMarzbanUserLinks } from "./marzban";
 
+async function getConfigPrefix(subscriber: any): Promise<string> {
+  if (subscriber.agentId) {
+    const agent = await storage.getAccount(subscriber.agentId);
+    if (agent?.prefix) return agent.prefix;
+    if (agent?.username) return agent.username;
+  }
+  return "MoHmmeD VPN";
+}
+
 function parseVlessLink(link: string): {
   uuid: string; address: string; port: number;
   type?: string; security?: string; path?: string;
@@ -241,6 +250,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/subscribers", requireAuth(["owner", "agent"]), async (req, res) => {
     const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
     const subs = await storage.getSubscribers(agentId);
+
+    if (req.session.role === "owner") {
+      const agents = await storage.getAgents();
+      const agentMap = new Map(agents.map(a => [a.id, a.prefix || a.username]));
+      const subsWithAgent = subs.map(s => ({
+        ...s,
+        agentName: s.agentId ? agentMap.get(s.agentId) || "Unknown" : "Owner",
+      }));
+      return res.json(subsWithAgent);
+    }
+
     res.json(subs);
   });
 
@@ -489,7 +509,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           settings: { response: { type: "http" } },
           tag: "block"
         }],
-        remarks: `MoHmmeD VPN - ${subscriber.name}`,
+        remarks: `${await getConfigPrefix(subscriber)} - ${subscriber.name}`,
         routing: {
           domainStrategy: "IPIfNonMatch",
           rules: [{
@@ -529,6 +549,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const realitySNI = process.env.REALITY_SERVER_NAME || "yahoo.com";
       const serverPort = process.env.VPN_SERVER_PORT || "8443";
 
+      const configPrefix = await getConfigPrefix(subscriber);
       const links = rawLinks.map(link => {
         let modified = link
           .replace(/5\.189\.174\.9/g, serverDomain)
@@ -557,7 +578,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         const hashIndex = modified.indexOf("#");
         if (hashIndex !== -1) {
-          const cleanName = encodeURIComponent(`MoHmmeD VPN - ${subscriber.name}`);
+          const cleanName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
           modified = modified.substring(0, hashIndex) + "#" + cleanName;
         }
         return modified;
