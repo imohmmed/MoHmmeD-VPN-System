@@ -121,7 +121,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.use("/sub/", configLimiter);
 
   app.get("/api/site-config", (_req, res) => {
-    res.json({ siteName: process.env.SITE_NAME || "MoHmmeD VPN" });
+    res.json({
+      siteName: process.env.SITE_NAME || "MoHmmeD VPN",
+      siteUrl: process.env.SITE_URL || "https://mohmmedvpn.com",
+      telegram: process.env.TELEGRAM_LINK || "https://t.me/mohmmed",
+      whatsapp: process.env.WHATSAPP_NUMBER || "07517171734",
+    });
   });
 
   // ===== AUTH =====

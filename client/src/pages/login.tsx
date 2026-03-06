@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: login, isPending } = useLogin();
   const { toast } = useToast();
-  const { data: siteConfig } = useQuery<{ siteName: string }>({ queryKey: ["/api/site-config"] });
+  const { data: siteConfig } = useQuery<{ siteName: string; siteUrl: string; telegram: string; whatsapp: string }>({ queryKey: ["/api/site-config"] });
   const siteName = siteConfig?.siteName || "MoHmmeD VPN";
 
   const form = useForm<LoginForm>({
@@ -132,7 +132,7 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-center gap-4 mt-6">
           <a
-            href="https://t.me/mohmmed"
+            href={siteConfig?.telegram || "https://t.me/mohmmed"}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="link-telegram"
@@ -142,7 +142,7 @@ export default function LoginPage() {
             Telegram
           </a>
           <a
-            href="https://wa.me/9647766699669"
+            href={`https://wa.me/${siteConfig?.whatsapp || "9647766699669"}`}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="link-whatsapp"

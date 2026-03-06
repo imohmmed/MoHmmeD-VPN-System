@@ -51,12 +51,13 @@ type Subscriber = {
   createdAt: string;
 };
 
-function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
+function SubCard({ sub, onDelete, onToggle, onCopy, copied, siteUrl }: {
   sub: Subscriber;
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
   onCopy: (text: string) => void;
   copied: string | null;
+  siteUrl: string;
 }) {
   const isExpired = new Date(sub.expiresAt) < new Date();
 
@@ -105,11 +106,11 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied }: {
             <div className="flex items-center gap-2 text-xs flex-wrap">
               <Link2 className="w-3 h-3 text-blue-500" />
               <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px]">Cloud Config</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-link-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json` ? "Copied!" : "Copy Link"}
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-blue-600" data-testid={`button-copy-link-${sub.id}`} onClick={() => onCopy(`${siteUrl}/configs/${sub.code}.json`)}>
+                {copied === `${siteUrl}/configs/${sub.code}.json` ? "Copied!" : "Copy Link"}
               </Button>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`${siteUrl}/configs/${sub.code}.json?type=ws`)}>
+                {copied === `${siteUrl}/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
               </Button>
             </div>
           )}
@@ -136,6 +137,8 @@ export default function AgentUsersPage() {
   const [search, setSearch] = useState("");
 
   const { data: subs = [], isLoading } = useQuery<Subscriber[]>({ queryKey: ["/api/subscribers"] });
+  const { data: siteConfig } = useQuery<{ siteName: string; siteUrl: string }>({ queryKey: ["/api/site-config"] });
+  const siteUrl = siteConfig?.siteUrl || "";
 
   const form = useForm({
     resolver: zodResolver(createSubSchema),
@@ -298,6 +301,7 @@ export default function AgentUsersPage() {
                 onToggle={(id) => toggleMutation.mutate(id)}
                 onCopy={handleCopy}
                 copied={copied}
+                siteUrl={siteUrl}
               />
             ))}
           </div>
