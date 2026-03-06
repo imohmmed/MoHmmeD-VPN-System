@@ -9,7 +9,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Wifi, Lock, Eye, EyeOff } from "lucide-react";
 import { SiTelegram, SiWhatsapp } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -22,8 +21,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: login, isPending } = useLogin();
   const { toast } = useToast();
-  const { data: siteConfig } = useQuery<{ siteName: string; siteUrl: string; telegram: string; whatsapp: string }>({ queryKey: ["/api/site-config"] });
-  const siteName = siteConfig?.siteName || "MoHmmeD VPN";
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -47,7 +44,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">{siteName}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">MoHmmeD VPN</h1>
           <p className="text-muted-foreground mt-1 text-sm">Secure • Fast • Reliable</p>
         </div>
 
@@ -132,7 +129,7 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-center gap-4 mt-6">
           <a
-            href={siteConfig?.telegram || "https://t.me/mohmmed"}
+            href="https://t.me/mohmmed"
             target="_blank"
             rel="noopener noreferrer"
             data-testid="link-telegram"
@@ -142,7 +139,7 @@ export default function LoginPage() {
             Telegram
           </a>
           <a
-            href={`https://wa.me/${siteConfig?.whatsapp || "9647766699669"}`}
+            href="https://wa.me/9647766699669"
             target="_blank"
             rel="noopener noreferrer"
             data-testid="link-whatsapp"

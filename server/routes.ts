@@ -31,7 +31,7 @@ async function getConfigPrefix(subscriber: any): Promise<string> {
     if (agent?.prefix) return agent.prefix;
     if (agent?.username) return agent.username;
   }
-  return process.env.SITE_NAME || "MoHmmeD VPN";
+  return "MoHmmeD VPN";
 }
 
 function parseVlessLink(link: string): {
@@ -119,15 +119,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.use("/configs/", configLimiter);
   app.use("/sub/", configLimiter);
-
-  app.get("/api/site-config", (_req, res) => {
-    res.json({
-      siteName: process.env.SITE_NAME || "MoHmmeD VPN",
-      siteUrl: process.env.SITE_URL || "https://mohmmedvpn.com",
-      telegram: process.env.TELEGRAM_LINK || "https://t.me/mohmmed",
-      whatsapp: process.env.WHATSAPP_NUMBER || "07517171734",
-    });
-  });
 
   // ===== AUTH =====
   app.post("/api/auth/login", loginLimiter, async (req, res) => {
@@ -808,7 +799,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (subscriber.expiresAt) {
         res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt).getTime() / 1000)}`);
       }
-      res.setHeader("Profile-Title", `${process.env.SITE_NAME || "MoHmmeD VPN"} - ${subscriber.name}`);
+      res.setHeader("Profile-Title", `MoHmmeD VPN - ${subscriber.name}`);
       res.send(subContent);
     } catch (e) {
       console.error("Sub endpoint error:", e);

@@ -223,7 +223,7 @@ function generateVpnConfig(deviceId?: string) {
   const uuid = randomUUID();
   return {
     v: "2",
-    ps: process.env.SITE_NAME || "MoHmmeD VPN",
+    ps: "MoHmmeD VPN",
     add: "5.189.174.9",
     port: "443",
     id: uuid,
@@ -237,7 +237,7 @@ function generateVpnConfig(deviceId?: string) {
     sni: "5.189.174.9",
     alpn: "",
     fp: "",
-    remark: `${process.env.SITE_NAME || "MoHmmeD VPN"} - ${deviceId ? deviceId.substring(0, 8) : uuid.substring(0, 8)}`,
+    remark: `MoHmmeD VPN - ${deviceId ? deviceId.substring(0, 8) : uuid.substring(0, 8)}`,
   };
 }
 

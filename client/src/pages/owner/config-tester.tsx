@@ -84,7 +84,6 @@ export default function ConfigTester() {
   const { data: testSubs, isLoading: subsLoading } = useQuery<TestSubscriber[]>({
     queryKey: ["/api/test-subscribers"],
   });
-  const { data: siteConfig } = useQuery<{ siteName: string; siteUrl: string }>({ queryKey: ["/api/site-config"] });
 
   const activeSni = customSni || sni;
   const activeHost = host || activeSni;
@@ -92,7 +91,7 @@ export default function ConfigTester() {
   function generateTestConfig() {
     const sub = testSubs?.find(s => s.id === selectedSub);
     const activeUUID = sub?.uuid || "test-0000-0000-0000-000000000000";
-    const domain = siteConfig?.siteUrl?.replace("https://", "").replace("http://", "") || "mohmmedvpn.com";
+    const domain = "mohmmedvpn.com";
     const remarkName = encodeURIComponent(`Test - ${activeSni}`);
 
     let vlessLink = "";
