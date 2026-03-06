@@ -576,10 +576,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const querySni = typeof req.query.sni === "string" ? req.query.sni : "";
         const queryPort = typeof req.query.port === "string" ? req.query.port : "";
         const queryHost = typeof req.query.host === "string" ? req.query.host : "";
-        const wsSNI = querySni || process.env.WS_SNI || "m.facebook.com";
-        const wsPort = parseInt(queryPort || process.env.WS_PORT || "443");
+        const wsSNI = querySni || process.env.WS_SNI || "0.facebook.com";
+        const wsPort = parseInt(queryPort || process.env.WS_PORT || "80");
         const wsPath = process.env.WS_PATH || "/vlessws";
         const wsHost = queryHost || wsSNI;
+
+        const streamSettings: Record<string, any> = {
+          network: "ws",
+          security: "none",
+          wsSettings: {
+            path: wsPath,
+            headers: { Host: wsHost }
+          }
+        };
 
         v2rayConfig = {
           dns: {
@@ -615,18 +624,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 }]
               }]
             },
-            streamSettings: {
-              network: "ws",
-              security: "tls",
-              tlsSettings: {
-                allowInsecure: true,
-                serverName: wsSNI
-              },
-              wsSettings: {
-                path: wsPath,
-                headers: { Host: wsHost }
-              }
-            },
+            streamSettings,
             tag: "proxy"
           }, {
             protocol: "freedom",
@@ -753,41 +751,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const realityShortId = process.env.REALITY_SHORT_ID || "";
       const realitySNI = process.env.REALITY_SERVER_NAME || "yahoo.com";
       const serverPort = process.env.VPN_SERVER_PORT || "8443";
+      const wsSNI = process.env.WS_SNI || "0.facebook.com";
+      const wsPort = process.env.WS_PORT || "80";
+      const wsPath = process.env.WS_PATH || "/vlessws";
 
       const configPrefix = await getConfigPrefix(subscriber);
-      const links = rawLinks.map(link => {
-        let modified = link
-          .replace(/5\.189\.174\.9/g, serverDomain)
-          .replace(/security=none/g, "security=reality")
-          .replace(/security=tls/g, "security=reality")
-          .replace(/:8443/g, `:${serverPort}`);
-        if (!modified.includes("sni=")) {
-          modified = modified.replace("#", `&sni=${realitySNI}#`);
-        } else {
-          modified = modified.replace(/sni=[^&]*/g, `sni=${realitySNI}`);
+      const links: string[] = [];
+      for (const link of rawLinks) {
+        const parsed = parseVlessLink(link);
+        if (!parsed) continue;
+        const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
+
+        if (link.includes("VLESS_REALITY") || link.includes("Reality") || (parsed.security === "reality") || (parsed.flow && parsed.flow.includes("xtls"))) {
+          let realityLink = `vless://${parsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`;
+          links.push(realityLink);
         }
-        if (modified.includes("type=ws")) {
-          modified = modified.replace(/type=ws/g, "type=tcp");
+
+        if (link.includes("VLESS_WS") || link.includes("WS") || parsed.type === "ws") {
+          let wsLink = `vless://${parsed.uuid}@${serverDomain}:${wsPort}?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20-%20${remarkName}`;
+          links.push(wsLink);
         }
-        if (!modified.includes("fp=")) {
-          modified = modified.replace("#", "&fp=chrome#");
+      }
+
+      if (links.length === 0) {
+        const firstParsed = parseVlessLink(rawLinks[0]);
+        if (firstParsed) {
+          const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
+          links.push(`vless://${firstParsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
+          links.push(`vless://${firstParsed.uuid}@${serverDomain}:${wsPort}?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20-%20${remarkName}`);
         }
-        if (!modified.includes("pbk=")) {
-          modified = modified.replace("#", `&pbk=${realityPubKey}#`);
-        }
-        if (!modified.includes("sid=")) {
-          modified = modified.replace("#", `&sid=${realityShortId}#`);
-        }
-        if (!modified.includes("flow=")) {
-          modified = modified.replace("?", "?flow=xtls-rprx-vision&");
-        }
-        const hashIndex = modified.indexOf("#");
-        if (hashIndex !== -1) {
-          const cleanName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
-          modified = modified.substring(0, hashIndex) + "#" + cleanName;
-        }
-        return modified;
-      });
+      }
 
       const subContent = Buffer.from(links.join("\n")).toString("base64");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
