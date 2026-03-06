@@ -36,6 +36,7 @@ type AgentDetail = {
   isActive: boolean;
   createdAt: string;
   notes?: string;
+  allowedConfigs?: string[];
   balance: number;
   totalPurchases: number;
   totalPayments: number;
@@ -96,6 +97,24 @@ export default function AgentDetailPage() {
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const configsMutation = useMutation({
+    mutationFn: (allowedConfigs: string[]) => apiRequest("PATCH", `/api/agents/${agentId}/configs`, { allowedConfigs }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents", agentId] });
+      toast({ title: "Config types updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleConfig = (configType: string) => {
+    if (!agent) return;
+    const current = agent.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+    const updated = current.includes(configType)
+      ? current.filter(c => c !== configType)
+      : [...current, configType];
+    configsMutation.mutate(updated);
+  };
 
   const suspendMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", `/api/agents/${agentId}/suspend`),
@@ -185,6 +204,34 @@ export default function AgentDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Allowed Config Types</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {[
+              { key: "ws", label: "WS 443", color: "bg-green-500" },
+              { key: "ws_p80", label: "WS P80", color: "bg-orange-500" },
+              { key: "hu_p80", label: "HU P80", color: "bg-purple-500" },
+            ].map(({ key, label, color }) => {
+              const active = (agent.allowedConfigs || ["ws", "ws_p80", "hu_p80"]).includes(key);
+              return (
+                <Button
+                  key={key}
+                  variant={active ? "default" : "outline"}
+                  size="sm"
+                  className={active ? `${color} text-white hover:opacity-80` : ""}
+                  onClick={() => toggleConfig(key)}
+                  disabled={configsMutation.isPending}
+                  data-testid={`button-toggle-config-${key}`}
+                >
+                  {active ? "✓ " : ""}{label}
+                </Button>
+              );
+            })}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>

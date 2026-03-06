@@ -249,6 +249,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(safe);
   });
 
+  app.patch("/api/agents/:id/configs", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
+    const { allowedConfigs } = req.body;
+    if (!Array.isArray(allowedConfigs)) return res.status(400).json({ message: "allowedConfigs must be an array" });
+    const valid = ["ws", "ws_p80", "hu_p80"];
+    const filtered = allowedConfigs.filter((c: string) => valid.includes(c));
+    const updated = await storage.updateAccount(agent.id, { allowedConfigs: filtered });
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
   app.delete("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
     if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const agent = await storage.getAccount(req.params.id);
@@ -566,31 +579,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const serverPort = parseInt(process.env.VPN_SERVER_PORT || "8443");
       const realityServerName = process.env.REALITY_SERVER_NAME || "yahoo.com";
 
-      const configType = req.query.type === "ws" ? "ws" : "reality";
+      const rawType = req.query.type as string;
+      const configType = rawType === "ws" ? "ws" : rawType === "hu" ? "hu" : "reality";
+      const queryPort = typeof req.query.port === "string" ? req.query.port : "";
+
+      const agentAccount = await storage.getAccount(subscriber.agentId);
+      const allowedConfigs = agentAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+      let requestedConfigKey = "ws";
+      if (configType === "hu") {
+        requestedConfigKey = "hu_p80";
+      } else if (configType === "ws" && queryPort === "80") {
+        requestedConfigKey = "ws_p80";
+      }
+      if (!allowedConfigs.includes(requestedConfigKey)) {
+        return res.status(403).json({ error: "This config type is not available" });
+      }
+
       const configPrefix = await getConfigPrefix(subscriber);
       const remarkName = `${configPrefix} - ${subscriber.name}`;
 
       let v2rayConfig;
 
-      if (configType === "ws") {
+      if (configType === "ws" || configType === "hu") {
         const querySni = typeof req.query.sni === "string" ? req.query.sni : "";
-        const queryPort = typeof req.query.port === "string" ? req.query.port : "";
         const queryHost = typeof req.query.host === "string" ? req.query.host : "";
         const wsPort = parseInt(queryPort || process.env.WS_PORT || "443");
         const defaultSni = wsPort === 80 ? (process.env.WS_P80_SNI || "0.facebook.com") : (process.env.WS_SNI || "m.facebook.com");
         const wsSNI = querySni || defaultSni;
-        const wsPath = process.env.WS_PATH || "/vlessws";
+        const networkType = configType === "hu" ? "httpupgrade" : "ws";
+        const wsPath = configType === "hu" ? (process.env.HU_PATH || "/vlesshu") : (process.env.WS_PATH || "/vlessws");
         const wsHost = queryHost || wsSNI;
 
         const useTls = wsPort !== 80;
         const streamSettings: Record<string, any> = {
-          network: "ws",
+          network: networkType,
           security: useTls ? "tls" : "none",
-          wsSettings: {
-            path: wsPath,
-            headers: { Host: wsHost }
-          }
         };
+        if (networkType === "httpupgrade") {
+          streamSettings.httpupgradeSettings = { path: wsPath, host: wsHost };
+        } else {
+          streamSettings.wsSettings = { path: wsPath, headers: { Host: wsHost } };
+        }
         if (useTls) {
           streamSettings.tlsSettings = {
             allowInsecure: true,

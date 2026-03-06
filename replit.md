@@ -23,10 +23,12 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 ## VPN Configuration
 - Server: 5.189.174.9 (mohmmedvpn.com)
 - **Reality Config**: VLESS + Reality + TCP on port 8443 (SNI: yahoo.com) — standard VPN
-- **WS Config (443)**: VLESS + WebSocket + TLS on port 443 via Nginx (SNI: 0.facebook.com) — data freezing
+- **WS Config (443)**: VLESS + WebSocket + TLS on port 443 via Nginx (SNI: m.facebook.com) — data freezing
 - **WS Config (80)**: VLESS + WebSocket + No TLS on port 80 via Nginx (SNI: 0.facebook.com) — full data freezing (confirmed working with Asiacell Free Social+)
+- **HU Config (80)**: VLESS + HTTPUpgrade + No TLS on port 80 via Nginx path /vlesshu (SNI: 0.facebook.com) — full data freezing (confirmed)
 - Config format: JSON v2ray config for NPV Tunnel cloud config import
-- Three config types available per subscriber: Reality (Copy Link), WebSocket 443 (Copy WS), WebSocket 80 (Copy WS P80)
+- Config types: WS 443 (Copy WS), WS 80 (Copy WS P80), HTTPUpgrade 80 (Copy HU P80)
+- **Per-agent config control**: Owner can toggle which config types (ws, ws_p80, hu_p80) each agent can access via agent detail page. Enforced both UI-side and server-side.
 
 ## Key Pages
 - `/login` - Authentication

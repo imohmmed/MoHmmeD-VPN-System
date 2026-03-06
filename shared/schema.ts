@@ -22,6 +22,7 @@ export const accounts = pgTable("accounts", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   notes: text("notes"),
   prefix: text("prefix"),
+  allowedConfigs: text("allowed_configs").array().default(sql`ARRAY['ws','ws_p80','hu_p80']`),
 });
 
 export const subscribers = pgTable("subscribers", {
