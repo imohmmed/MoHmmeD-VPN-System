@@ -521,6 +521,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ balance });
   });
 
+  app.get("/api/test-subscribers", requireAuth(["owner"]), async (req, res) => {
+    try {
+      const subs = await storage.getSubscribers();
+      const results = [];
+      for (const sub of subs.slice(0, 20)) {
+        if (!sub.marzbanUsername || !sub.isActive) continue;
+        try {
+          const links = await getMarzbanUserLinks(sub.marzbanUsername);
+          if (!links.length) continue;
+          const parsed = parseVlessLink(links[0]);
+          if (!parsed) continue;
+          results.push({ id: sub.id, name: sub.name, code: sub.code, uuid: parsed.uuid });
+        } catch { continue; }
+      }
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/configs/:code.json", async (req, res) => {
     try {
       const code = req.params.code;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Copy, FlaskConical, Wifi, Shield, Zap, Globe, ChevronLeft, Info, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowRight, Copy, FlaskConical, Wifi, Shield, Zap, Globe, ChevronLeft, Info, CheckCircle2, XCircle, User } from "lucide-react";
+
+type TestSubscriber = { id: string; name: string; code: string; uuid: string };
 
 const SNI_PRESETS = [
   { label: "Facebook", value: "m.facebook.com", carrier: "آسياسيل" },
@@ -73,15 +76,21 @@ export default function ConfigTester() {
   const [host, setHost] = useState("");
   const [port, setPort] = useState("443");
   const [path, setPath] = useState("/vlessws");
+  const [selectedSub, setSelectedSub] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
   const [generatedConfig, setGeneratedConfig] = useState("");
   const [testResults, setTestResults] = useState<Array<{ sni: string; transport: string; status: string }>>([]);
+
+  const { data: testSubs, isLoading: subsLoading } = useQuery<TestSubscriber[]>({
+    queryKey: ["/api/test-subscribers"],
+  });
 
   const activeSni = customSni || sni;
   const activeHost = host || activeSni;
 
   function generateTestConfig() {
-    const testUUID = "test-0000-0000-0000-000000000000";
+    const sub = testSubs?.find(s => s.id === selectedSub);
+    const activeUUID = sub?.uuid || "test-0000-0000-0000-000000000000";
     const domain = "mohmmedvpn.com";
     const remarkName = encodeURIComponent(`Test - ${activeSni}`);
 
@@ -94,7 +103,7 @@ export default function ConfigTester() {
         vnext: [{
           address: domain,
           port: parseInt(port),
-          users: [{ encryption: "none", id: testUUID, level: 8, security: "auto" }]
+          users: [{ encryption: "none", id: activeUUID, level: 8, security: "auto" }]
         }]
       },
       tag: "proxy"
@@ -107,14 +116,14 @@ export default function ConfigTester() {
         tlsSettings: { allowInsecure: true, serverName: activeSni },
         wsSettings: { path: path, headers: { Host: activeHost } }
       };
-      vlessLink = `vless://${testUUID}@${domain}:${port}?security=tls&type=ws&path=${encodeURIComponent(path)}&host=${activeHost}&sni=${activeSni}&allowInsecure=1#${remarkName}`;
+      vlessLink = `vless://${activeUUID}@${domain}:${port}?security=tls&type=ws&path=${encodeURIComponent(path)}&host=${activeHost}&sni=${activeSni}&allowInsecure=1#${remarkName}`;
     } else if (transport === "ws_none") {
       baseOutbound.streamSettings = {
         network: "ws",
         security: "none",
         wsSettings: { path: path, headers: { Host: activeHost } }
       };
-      vlessLink = `vless://${testUUID}@${domain}:${port}?security=none&type=ws&path=${encodeURIComponent(path)}&host=${activeHost}#${remarkName}`;
+      vlessLink = `vless://${activeUUID}@${domain}:${port}?security=none&type=ws&path=${encodeURIComponent(path)}&host=${activeHost}#${remarkName}`;
     } else if (transport === "grpc_tls") {
       baseOutbound.streamSettings = {
         network: "grpc",
@@ -122,7 +131,7 @@ export default function ConfigTester() {
         tlsSettings: { allowInsecure: true, serverName: activeSni },
         grpcSettings: { serviceName: "vlessgrpc" }
       };
-      vlessLink = `vless://${testUUID}@${domain}:${port}?security=tls&type=grpc&serviceName=vlessgrpc&sni=${activeSni}&allowInsecure=1#${remarkName}`;
+      vlessLink = `vless://${activeUUID}@${domain}:${port}?security=tls&type=grpc&serviceName=vlessgrpc&sni=${activeSni}&allowInsecure=1#${remarkName}`;
     } else if (transport === "tcp_http") {
       baseOutbound.streamSettings = {
         network: "tcp",
@@ -139,7 +148,7 @@ export default function ConfigTester() {
           }
         }
       };
-      vlessLink = `vless://${testUUID}@${domain}:${port}?security=none&type=tcp&headerType=http&host=${activeHost}#${remarkName}`;
+      vlessLink = `vless://${activeUUID}@${domain}:${port}?security=none&type=tcp&headerType=http&host=${activeHost}#${remarkName}`;
     } else if (transport === "httpupgrade_tls") {
       baseOutbound.streamSettings = {
         network: "httpupgrade",
@@ -147,7 +156,7 @@ export default function ConfigTester() {
         tlsSettings: { allowInsecure: true, serverName: activeSni },
         httpupgradeSettings: { path: path, host: activeHost }
       };
-      vlessLink = `vless://${testUUID}@${domain}:${port}?security=tls&type=httpupgrade&path=${encodeURIComponent(path)}&host=${activeHost}&sni=${activeSni}&allowInsecure=1#${remarkName}`;
+      vlessLink = `vless://${activeUUID}@${domain}:${port}?security=tls&type=httpupgrade&path=${encodeURIComponent(path)}&host=${activeHost}&sni=${activeSni}&allowInsecure=1#${remarkName}`;
     }
 
     configJson = {
@@ -231,6 +240,41 @@ export default function ConfigTester() {
           </Card>
 
           <div className="space-y-6">
+            <Card className="border-primary/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="w-5 h-5 text-purple-500" />
+                  اختر مشترك للتجربة
+                </CardTitle>
+                <CardDescription>اختر مشترك حقيقي عشان الرابط يطلع جاهز</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {subsLoading ? (
+                  <p className="text-sm text-muted-foreground">جاري تحميل المشتركين...</p>
+                ) : testSubs && testSubs.length > 0 ? (
+                  <Select value={selectedSub} onValueChange={setSelectedSub}>
+                    <SelectTrigger data-testid="select-subscriber">
+                      <SelectValue placeholder="اختر مشترك..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {testSubs.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} — {s.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-amber-600">ما لقينا مشتركين فعّالين. سوّ مشترك من صفحة Users أولاً.</p>
+                )}
+                {selectedSub && testSubs && (
+                  <p className="text-xs text-muted-foreground mt-2" dir="ltr" data-testid="text-selected-uuid">
+                    UUID: {testSubs.find(s => s.id === selectedSub)?.uuid}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -354,12 +398,22 @@ export default function ConfigTester() {
                   <pre className="text-[10px] text-muted-foreground max-h-40 overflow-y-auto font-mono" dir="ltr" data-testid="text-json-config">{generatedConfig}</pre>
                 </div>
 
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    ⚠️ هذا كونفق تجريبي بـ UUID وهمي. انسخ رابط الـ VLESS وبدّل الـ UUID بـ UUID حقيقي من Marzban عشان تجربه. أو استخدم الـ API: <code dir="ltr">/configs/CODE.json?type=ws&sni=X&port=Y</code>
-                  </p>
-                </div>
+                {!selectedSub && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      اختر مشترك من القائمة أعلاه عشان يطلعلك رابط جاهز بـ UUID حقيقي. بدون اختيار مشترك الرابط بيكون بـ UUID وهمي.
+                    </p>
+                  </div>
+                )}
+                {selectedSub && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    <p className="text-xs text-green-700 dark:text-green-300">
+                      الرابط جاهز بـ UUID حقيقي! انسخه وضيفه مباشرة بـ NPV Tunnel.
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button data-testid="button-mark-success" variant="outline" className="text-green-600 border-green-300" onClick={() => markResult("شغال ✅")}>
