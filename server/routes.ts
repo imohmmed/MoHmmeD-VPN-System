@@ -768,21 +768,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const parsed = parseVlessLink(link);
         if (!parsed) continue;
         if (!uuid) uuid = parsed.uuid;
-        const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
-
-        if (link.includes("VLESS_REALITY") || link.includes("Reality") || (parsed.security === "reality") || (parsed.flow && parsed.flow.includes("xtls"))) {
-          links.push(`vless://${parsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
-        }
-
-        if (link.includes("VLESS_WS") || link.includes("WS") || parsed.type === "ws") {
-          links.push(`vless://${parsed.uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
-          links.push(`vless://${parsed.uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20P80%20-%20${remarkName}`);
-        }
       }
 
-      if (links.length === 0 && uuid) {
+      if (uuid) {
         const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
-        links.push(`vless://${uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
         links.push(`vless://${uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
         links.push(`vless://${uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20P80%20-%20${remarkName}`);
       }
