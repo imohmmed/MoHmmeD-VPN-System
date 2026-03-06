@@ -117,6 +117,9 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
               <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws`)}>
                 {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
               </Button>
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-orange-600" data-testid={`button-copy-ws80-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80`)}>
+                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80` ? "Copied!" : "Copy WS P80"}
+              </Button>
             </div>
           )}
           {sub.deviceId && (

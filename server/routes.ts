@@ -577,18 +577,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const queryPort = typeof req.query.port === "string" ? req.query.port : "";
         const queryHost = typeof req.query.host === "string" ? req.query.host : "";
         const wsSNI = querySni || process.env.WS_SNI || "0.facebook.com";
-        const wsPort = parseInt(queryPort || process.env.WS_PORT || "80");
+        const wsPort = parseInt(queryPort || process.env.WS_PORT || "443");
         const wsPath = process.env.WS_PATH || "/vlessws";
         const wsHost = queryHost || wsSNI;
 
+        const useTls = wsPort !== 80;
         const streamSettings: Record<string, any> = {
           network: "ws",
-          security: "none",
+          security: useTls ? "tls" : "none",
           wsSettings: {
             path: wsPath,
             headers: { Host: wsHost }
           }
         };
+        if (useTls) {
+          streamSettings.tlsSettings = {
+            allowInsecure: true,
+            serverName: wsSNI
+          };
+        }
 
         v2rayConfig = {
           dns: {
@@ -752,34 +759,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const realitySNI = process.env.REALITY_SERVER_NAME || "yahoo.com";
       const serverPort = process.env.VPN_SERVER_PORT || "8443";
       const wsSNI = process.env.WS_SNI || "0.facebook.com";
-      const wsPort = process.env.WS_PORT || "80";
       const wsPath = process.env.WS_PATH || "/vlessws";
 
       const configPrefix = await getConfigPrefix(subscriber);
       const links: string[] = [];
+      let uuid = "";
       for (const link of rawLinks) {
         const parsed = parseVlessLink(link);
         if (!parsed) continue;
+        if (!uuid) uuid = parsed.uuid;
         const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
 
         if (link.includes("VLESS_REALITY") || link.includes("Reality") || (parsed.security === "reality") || (parsed.flow && parsed.flow.includes("xtls"))) {
-          let realityLink = `vless://${parsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`;
-          links.push(realityLink);
+          links.push(`vless://${parsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
         }
 
         if (link.includes("VLESS_WS") || link.includes("WS") || parsed.type === "ws") {
-          let wsLink = `vless://${parsed.uuid}@${serverDomain}:${wsPort}?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20-%20${remarkName}`;
-          links.push(wsLink);
+          links.push(`vless://${parsed.uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
+          links.push(`vless://${parsed.uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20P80%20-%20${remarkName}`);
         }
       }
 
-      if (links.length === 0) {
-        const firstParsed = parseVlessLink(rawLinks[0]);
-        if (firstParsed) {
-          const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
-          links.push(`vless://${firstParsed.uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
-          links.push(`vless://${firstParsed.uuid}@${serverDomain}:${wsPort}?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20-%20${remarkName}`);
-        }
+      if (links.length === 0 && uuid) {
+        const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
+        links.push(`vless://${uuid}@${serverDomain}:${serverPort}?security=reality&type=tcp&flow=xtls-rprx-vision&sni=${realitySNI}&fp=chrome&pbk=${realityPubKey}&sid=${realityShortId}#Reality%20-%20${remarkName}`);
+        links.push(`vless://${uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
+        links.push(`vless://${uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20P80%20-%20${remarkName}`);
       }
 
       const subContent = Buffer.from(links.join("\n")).toString("base64");
