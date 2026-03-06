@@ -576,8 +576,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const querySni = typeof req.query.sni === "string" ? req.query.sni : "";
         const queryPort = typeof req.query.port === "string" ? req.query.port : "";
         const queryHost = typeof req.query.host === "string" ? req.query.host : "";
-        const wsSNI = querySni || process.env.WS_SNI || "0.facebook.com";
         const wsPort = parseInt(queryPort || process.env.WS_PORT || "443");
+        const defaultSni = wsPort === 80 ? (process.env.WS_P80_SNI || "0.facebook.com") : (process.env.WS_SNI || "m.facebook.com");
+        const wsSNI = querySni || defaultSni;
         const wsPath = process.env.WS_PATH || "/vlessws";
         const wsHost = queryHost || wsSNI;
 
@@ -758,7 +759,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const realityShortId = process.env.REALITY_SHORT_ID || "";
       const realitySNI = process.env.REALITY_SERVER_NAME || "yahoo.com";
       const serverPort = process.env.VPN_SERVER_PORT || "8443";
-      const wsSNI = process.env.WS_SNI || "0.facebook.com";
+      const wsSNI = process.env.WS_SNI || "m.facebook.com";
+      const wsP80SNI = process.env.WS_P80_SNI || "0.facebook.com";
       const wsPath = process.env.WS_PATH || "/vlessws";
 
       const configPrefix = await getConfigPrefix(subscriber);
@@ -773,7 +775,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (uuid) {
         const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
         links.push(`vless://${uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
-        links.push(`vless://${uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}#WS%20P80%20-%20${remarkName}`);
+        links.push(`vless://${uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsP80SNI}#WS%20P80%20-%20${remarkName}`);
       }
 
       const subContent = Buffer.from(links.join("\n")).toString("base64");
