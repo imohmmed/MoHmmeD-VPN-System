@@ -553,9 +553,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let v2rayConfig;
 
       if (configType === "ws") {
-        const wsSNI = process.env.WS_SNI || "m.facebook.com";
-        const wsPort = parseInt(process.env.WS_PORT || "443");
+        const querySni = typeof req.query.sni === "string" ? req.query.sni : "";
+        const queryPort = typeof req.query.port === "string" ? req.query.port : "";
+        const queryHost = typeof req.query.host === "string" ? req.query.host : "";
+        const wsSNI = querySni || process.env.WS_SNI || "m.facebook.com";
+        const wsPort = parseInt(queryPort || process.env.WS_PORT || "443");
         const wsPath = process.env.WS_PATH || "/vlessws";
+        const wsHost = queryHost || wsSNI;
 
         v2rayConfig = {
           dns: {
@@ -600,7 +604,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               },
               wsSettings: {
                 path: wsPath,
-                headers: { Host: wsSNI }
+                headers: { Host: wsHost }
               }
             },
             tag: "proxy"

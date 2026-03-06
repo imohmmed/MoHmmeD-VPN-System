@@ -15,6 +15,7 @@ import LogsPage from "@/pages/owner/logs";
 import AgentDashboard from "@/pages/agent/dashboard";
 import AgentUsersPage from "@/pages/agent/users";
 import AgentTransactionsPage from "@/pages/agent/transactions";
+import ConfigTester from "@/pages/owner/config-tester";
 import NotFound from "@/pages/not-found";
 
 function AuthGuard({ children, roles }: { children: React.ReactNode; roles: Array<"owner" | "agent" | "user"> }) {
@@ -96,6 +97,11 @@ function Router() {
       <Route path="/owner/logs">
         <AuthGuard roles={["owner"]}>
           <LogsPage />
+        </AuthGuard>
+      </Route>
+      <Route path="/owner/config-tester">
+        <AuthGuard roles={["owner"]}>
+          <ConfigTester />
         </AuthGuard>
       </Route>
 

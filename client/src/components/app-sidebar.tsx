@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Users, CreditCard, ScrollText, UserCog,
-  Shield, LogOut, ChevronRight,
+  Shield, LogOut, ChevronRight, FlaskConical,
 } from "lucide-react";
 import { useAuth, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const ownerNav = [
   { title: "Users", url: "/owner/users", icon: Users },
   { title: "Transactions", url: "/owner/transactions", icon: CreditCard },
   { title: "Activity Logs", url: "/owner/logs", icon: ScrollText },
+  { title: "Config Tester", url: "/owner/config-tester", icon: FlaskConical },
 ];
 
 const agentNav = [
