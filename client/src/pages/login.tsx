@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Wifi, Lock, Eye, EyeOff } from "lucide-react";
 import { SiTelegram, SiWhatsapp } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -21,6 +22,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: login, isPending } = useLogin();
   const { toast } = useToast();
+  const { data: siteConfig } = useQuery<{ siteName: string }>({ queryKey: ["/api/site-config"] });
+  const siteName = siteConfig?.siteName || "MoHmmeD VPN";
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -44,7 +47,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">MoHmmeD VPN</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">{siteName}</h1>
           <p className="text-muted-foreground mt-1 text-sm">Secure • Fast • Reliable</p>
         </div>
 

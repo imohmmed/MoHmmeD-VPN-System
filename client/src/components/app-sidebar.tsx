@@ -11,6 +11,7 @@ import { useAuth, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
 
 const ownerNav = [
   { title: "Dashboard", url: "/owner", icon: LayoutDashboard },
@@ -31,8 +32,10 @@ export function AppSidebar() {
   const { user } = useAuth();
   const [location] = useLocation();
   const { mutate: logout } = useLogout();
+  const { data: siteConfig } = useQuery<{ siteName: string }>({ queryKey: ["/api/site-config"] });
 
   const navItems = user?.role === "owner" ? ownerNav : agentNav;
+  const siteName = siteConfig?.siteName || "MoHmmeD VPN";
 
   return (
     <Sidebar>
@@ -42,7 +45,7 @@ export function AppSidebar() {
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-sidebar-foreground text-sm leading-tight truncate">MoHmmeD VPN</p>
+            <p className="font-bold text-sidebar-foreground text-sm leading-tight truncate">{siteName}</p>
             <p className="text-xs text-muted-foreground leading-tight">Management System</p>
           </div>
         </div>

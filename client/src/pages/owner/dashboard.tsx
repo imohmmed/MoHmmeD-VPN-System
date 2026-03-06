@@ -41,7 +41,7 @@ export default function OwnerDashboard() {
       <div className="space-y-6 max-w-6xl">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Dashboard Overview</h2>
-          <p className="text-muted-foreground text-sm mt-1">MoHmmeD VPN management overview</p>
+          <p className="text-muted-foreground text-sm mt-1">VPN management overview</p>
         </div>
 
         {isLoading ? (
