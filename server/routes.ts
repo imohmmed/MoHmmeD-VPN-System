@@ -171,7 +171,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ===== AGENTS (owner only) =====
   app.get("/api/agents", requireAuth(["owner"]), async (req, res) => {
-    const agents = await storage.getAgents();
+    const agents = await storage.getAgentsByParent(req.session.accountId!);
     const result = await Promise.all(agents.map(async (a) => {
       const { passwordHash, ...safe } = a;
       const balance = await storage.getAgentBalance(a.id);
@@ -682,14 +682,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } else if (req.session.role === "sub_owner") {
       subs = await storage.getSubscribersByParent(req.session.accountId!);
     } else {
-      subs = await storage.getSubscribers();
+      subs = await storage.getSubscribersByOwner(req.session.accountId!);
     }
 
     subs = await syncWithMarzban(subs);
 
     if (req.session.role === "owner" || req.session.role === "sub_owner") {
       const agents = req.session.role === "owner"
-        ? await storage.getAgents()
+        ? await storage.getAgentsByParent(req.session.accountId!)
         : await storage.getAgentsByParent(req.session.accountId!);
       const agentMap = new Map(agents.map(a => [a.id, a.prefix || a.username]));
       const subsWithAgent = subs.map(s => ({
@@ -859,8 +859,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ===== STATS =====
   app.get("/api/stats", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
     if (req.session.role === "owner") {
-      const agents = await storage.getAgents();
-      const allSubs = await storage.getSubscribers();
+      const agents = await storage.getAgentsByParent(req.session.accountId!);
+      const allSubs = await storage.getSubscribersByOwner(req.session.accountId!);
       const allTxs = await storage.getTransactions();
 
       let totalOwed = 0;

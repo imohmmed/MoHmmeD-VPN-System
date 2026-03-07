@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogDescription,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, Users, CreditCard, TrendingUp, TrendingDown,
-  AlertTriangle, Calendar, Mail,
+  AlertTriangle, Calendar, Mail, Key, Trash2, Power,
   Smartphone, Ban, CheckCircle, Crown, UserCog,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -67,6 +71,7 @@ export default function SubOwnerDetailPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/owner/sub-owners/:id");
   const subOwnerId = params?.id;
+  const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
   const { data: subOwner, isLoading } = useQuery<SubOwnerDetail>({
     queryKey: ["/api/sub-owners", subOwnerId],
     enabled: !!subOwnerId,
@@ -78,6 +83,25 @@ export default function SubOwnerDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/sub-owners", subOwnerId] });
       queryClient.invalidateQueries({ queryKey: ["/api/sub-owners"] });
       toast({ title: "Sub-owner status updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteSubMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/subscribers/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners", subOwnerId] });
+      setDeleteSubId(null);
+      toast({ title: "Subscriber deleted" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleSubMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/toggle`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners", subOwnerId] });
+      toast({ title: "Subscriber status updated" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -311,9 +335,29 @@ export default function SubOwnerDetailPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-foreground">{sub.pricePaid.toLocaleString()} IQD</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(sub.createdAt), "MMM d")}</p>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="text-right mr-2">
+                            <p className="text-sm font-bold text-foreground">{sub.pricePaid.toLocaleString()} IQD</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(sub.createdAt), "MMM d")}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={sub.isActive ? "text-destructive" : "text-green-600"}
+                            onClick={() => toggleSubMutation.mutate(sub.id)}
+                            data-testid={`button-toggle-sub-${sub.id}`}
+                          >
+                            <Power className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={() => setDeleteSubId(sub.id)}
+                            data-testid={`button-delete-sub-${sub.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -372,6 +416,20 @@ export default function SubOwnerDetailPage() {
         </Tabs>
       </div>
 
+      <AlertDialog open={!!deleteSubId} onOpenChange={(o) => !o && setDeleteSubId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Subscriber</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete this subscriber and their VPN access.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteSubId && deleteSubMutation.mutate(deleteSubId)} className="bg-destructive text-destructive-foreground" data-testid="button-confirm-delete">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

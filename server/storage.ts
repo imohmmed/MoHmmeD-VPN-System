@@ -19,6 +19,7 @@ export interface IStorage {
   getSubOwners(): Promise<Account[]>;
   getAgentsByParent(parentId: string): Promise<Account[]>;
   getSubscribersByParent(parentId: string): Promise<Subscriber[]>;
+  getSubscribersByOwner(ownerId: string): Promise<Subscriber[]>;
   getTransactionsByParent(parentId: string): Promise<Transaction[]>;
   deleteSubOwner(id: string): Promise<void>;
   verifyPassword(account: Account, password: string): Promise<boolean>;
@@ -124,6 +125,16 @@ export class DbStorage implements IStorage {
     return allSubs.filter(s =>
       s.createdBy === parentId ||
       (s.agentId && agentIds.includes(s.agentId))
+    );
+  }
+
+  async getSubscribersByOwner(ownerId: string) {
+    const ownerAgents = await this.getAgentsByParent(ownerId);
+    const ownerAgentIds = ownerAgents.map(a => a.id);
+    const allSubs = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+    return allSubs.filter(s =>
+      s.createdBy === ownerId ||
+      (s.agentId && ownerAgentIds.includes(s.agentId))
     );
   }
 

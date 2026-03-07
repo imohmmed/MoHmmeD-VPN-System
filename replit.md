@@ -17,6 +17,8 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 
 Hierarchy: Owner → Sub-Owner → Agent → Subscriber
 
+**Data visibility**: Owner sees only their own agents/subscribers (not sub-owner's). Sub-owner data is viewed via sub-owner detail page. Owner can toggle/delete sub-owner subscribers from detail page.
+
 ## Business Logic
 - Each subscriber costs agents 5,000 IQD
 - Owner creates subscribers for free
