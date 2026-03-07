@@ -25,18 +25,32 @@ function validateUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-async function getConfigPrefix(subscriber: any): Promise<string> {
+async function getConfigRemarkName(subscriber: any): Promise<string> {
+  const subName = subscriber.name;
+
   if (subscriber.agentId) {
     const agent = await storage.getAccount(subscriber.agentId);
-    if (agent?.prefix) return agent.prefix;
-    if (agent?.username) return agent.username;
+    const agentLabel = agent?.prefix || agent?.username || "Agent";
+
+    if (agent?.createdBy) {
+      const parent = await storage.getAccount(agent.createdBy);
+      if (parent?.role === "sub_owner") {
+        const parentLabel = parent.prefix || parent.username;
+        return `${parentLabel} - ${agentLabel} - ${subName}`;
+      }
+    }
+    return `MoHmmeDVPN - ${agentLabel} - ${subName}`;
   }
+
   if (subscriber.createdBy) {
     const creator = await storage.getAccount(subscriber.createdBy);
-    if (creator?.prefix) return creator.prefix;
-    if (creator?.username) return creator.username;
+    if (creator?.role === "sub_owner") {
+      const creatorLabel = creator.prefix || creator.username;
+      return `${creatorLabel} - ${subName}`;
+    }
   }
-  return "MoHmmeD VPN";
+
+  return `MoHmmeDVPN - ${subName}`;
 }
 
 function parseVlessLink(link: string): {
@@ -1018,8 +1032,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(403).json({ error: "This config type is not available" });
       }
 
-      const configPrefix = await getConfigPrefix(subscriber);
-      const remarkName = `${configPrefix} - ${subscriber.name}`;
+      const remarkName = await getConfigRemarkName(subscriber);
 
       let v2rayConfig;
 
@@ -1215,7 +1228,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const wsP80SNI = process.env.WS_P80_SNI || "0.facebook.com";
       const wsPath = process.env.WS_PATH || "/vlessws";
 
-      const configPrefix = await getConfigPrefix(subscriber);
+      const fullRemarkName = await getConfigRemarkName(subscriber);
       const links: string[] = [];
       let uuid = "";
       for (const link of rawLinks) {
@@ -1225,7 +1238,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       if (uuid) {
-        const remarkName = encodeURIComponent(`${configPrefix} - ${subscriber.name}`);
+        const remarkName = encodeURIComponent(fullRemarkName);
         links.push(`vless://${uuid}@${serverDomain}:443?security=tls&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsSNI}&sni=${wsSNI}&allowInsecure=1#WS%20-%20${remarkName}`);
         links.push(`vless://${uuid}@${serverDomain}:80?security=none&type=ws&path=${encodeURIComponent(wsPath)}&host=${wsP80SNI}#WS%20P80%20-%20${remarkName}`);
       }
