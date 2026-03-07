@@ -473,58 +473,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true });
   });
 
-  app.post("/api/sub-owners/:id/payment", requireAuth(["owner"]), async (req, res) => {
-    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
-    const { amount, description } = req.body;
-    if (!amount || typeof amount !== "number" || amount <= 0 || amount > 99999999) return res.status(400).json({ message: "Invalid amount" });
-
-    const subOwner = await storage.getAccount(req.params.id);
-    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
-
-    const agents = await storage.getAgentsByParent(subOwner.id);
-    if (agents.length === 0) return res.status(400).json({ message: "Sub-owner has no agents" });
-
-    let remaining = Number(amount);
-    const agentBalances = await Promise.all(agents.map(async (a) => ({
-      id: a.id,
-      balance: await storage.getAgentBalance(a.id),
-    })));
-    agentBalances.sort((a, b) => b.balance - a.balance);
-
-    const createdTxs = [];
-    for (const ab of agentBalances) {
-      if (remaining <= 0 || ab.balance <= 0) break;
-      const payAmount = Math.min(remaining, ab.balance);
-      const tx = await storage.createTransaction({
-        agentId: ab.id,
-        type: "payment",
-        amount: payAmount,
-        description: description || `Payment from sub-owner: ${subOwner.username}`,
-      });
-      createdTxs.push(tx);
-      remaining -= payAmount;
-    }
-
-    if (remaining > 0 && createdTxs.length === 0) {
-      const tx = await storage.createTransaction({
-        agentId: agents[0].id,
-        type: "payment",
-        amount: Number(amount),
-        description: description || `Payment from sub-owner: ${subOwner.username}`,
-      });
-      createdTxs.push(tx);
-    }
-
-    await storage.createLog({
-      accountId: req.session.accountId!,
-      action: "record_payment",
-      details: `Payment of ${amount} IQD for sub-owner: ${subOwner.username}`,
-      targetId: subOwner.id,
-    });
-
-    res.json(createdTxs[0] || { success: true });
-  });
-
   // ===== SUB-OWNER's OWN AGENT MANAGEMENT =====
   app.get("/api/my-agents", requireAuth(["sub_owner"]), async (req, res) => {
     const agents = await storage.getAgentsByParent(req.session.accountId!);

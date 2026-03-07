@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Plus, Crown, Mail, Users, Ban, CheckCircle,
-  Trash2, DollarSign, MoreVertical, ChevronRight,
+  Trash2, MoreVertical, ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -36,11 +36,6 @@ const createSubOwnerSchema = z.object({
   prefix: z.string().min(2, "Min 2 characters").max(15, "Max 15 characters").regex(/^[a-zA-Z0-9]+$/, "English letters and numbers only"),
   serverAddress: z.string().min(1, "Server address required"),
   notes: z.string().optional(),
-});
-
-const paymentSchema = z.object({
-  amount: z.number().min(1, "Amount must be positive"),
-  description: z.string().optional(),
 });
 
 type SubOwner = {
@@ -62,7 +57,6 @@ export default function SubOwnersPage() {
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [paymentSubOwnerId, setPaymentSubOwnerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const { data: subOwners = [], isLoading } = useQuery<SubOwner[]>({ queryKey: ["/api/sub-owners"] });
@@ -70,11 +64,6 @@ export default function SubOwnersPage() {
   const form = useForm({
     resolver: zodResolver(createSubOwnerSchema),
     defaultValues: { email: "", username: "", password: "", prefix: "", serverAddress: "", notes: "" },
-  });
-
-  const payForm = useForm({
-    resolver: zodResolver(paymentSchema),
-    defaultValues: { amount: 0, description: "" },
   });
 
   const createMutation = useMutation({
@@ -105,19 +94,6 @@ export default function SubOwnersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setDeleteId(null);
       toast({ title: "Sub-owner deleted" });
-    },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
-  const paymentMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      apiRequest("POST", `/api/sub-owners/${id}/payment`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setPaymentSubOwnerId(null);
-      payForm.reset();
-      toast({ title: "Payment recorded" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -269,7 +245,7 @@ export default function SubOwnersPage() {
                         <p className="font-bold text-foreground text-sm">{so.subscribersCount}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Owes</p>
+                        <p className="text-xs text-muted-foreground">Agents Debt</p>
                         <p className={`font-bold text-sm ${so.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
                           {so.balance > 0 ? `${so.balance.toLocaleString()} IQD` : "Settled"}
                         </p>
@@ -286,9 +262,6 @@ export default function SubOwnersPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => setLocation(`/owner/sub-owners/${so.id}`)} data-testid={`button-view-sub-owner-${so.id}`}>
                             <Users className="w-4 h-4 mr-2" />View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPaymentSubOwnerId(so.id)} data-testid={`button-payment-sub-owner-${so.id}`}>
-                            <DollarSign className="w-4 h-4 mr-2" />Record Payment
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => suspendMutation.mutate(so.id)} data-testid={`button-suspend-sub-owner-${so.id}`}>
                             {so.isActive
@@ -326,37 +299,6 @@ export default function SubOwnersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!paymentSubOwnerId} onOpenChange={(o) => !o && setPaymentSubOwnerId(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
-          <Form {...payForm}>
-            <form onSubmit={payForm.handleSubmit((d) =>
-              paymentSubOwnerId && paymentMutation.mutate({ id: paymentSubOwnerId, data: d })
-            )} className="space-y-4">
-              <FormField control={payForm.control} name="amount" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount (IQD)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="5000" data-testid="input-sub-owner-payment-amount" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={payForm.control} name="description" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
-                  <FormControl><Input {...field} placeholder="Payment notes..." /></FormControl>
-                </FormItem>
-              )} />
-              <DialogFooter>
-                <Button type="submit" disabled={paymentMutation.isPending} data-testid="button-confirm-sub-owner-payment">
-                  {paymentMutation.isPending ? "Recording..." : "Record Payment"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 }

@@ -1,33 +1,20 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, Users, CreditCard, TrendingUp, TrendingDown,
-  AlertTriangle, Calendar, Key, Mail, ScrollText,
-  DollarSign, Smartphone, Ban, CheckCircle, Crown, UserCog,
+  AlertTriangle, Calendar, Mail,
+  Smartphone, Ban, CheckCircle, Crown, UserCog,
 } from "lucide-react";
 import { format } from "date-fns";
-
-const paymentSchema = z.object({
-  amount: z.number().min(1, "Amount must be positive"),
-  description: z.string().optional(),
-});
 
 type SubOwnerDetail = {
   id: string;
@@ -80,29 +67,9 @@ export default function SubOwnerDetailPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/owner/sub-owners/:id");
   const subOwnerId = params?.id;
-  const [payOpen, setPayOpen] = useState(false);
-
   const { data: subOwner, isLoading } = useQuery<SubOwnerDetail>({
     queryKey: ["/api/sub-owners", subOwnerId],
     enabled: !!subOwnerId,
-  });
-
-  const payForm = useForm({
-    resolver: zodResolver(paymentSchema),
-    defaultValues: { amount: 0, description: "" },
-  });
-
-  const paymentMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/sub-owners/${subOwnerId}/payment`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners", subOwnerId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setPayOpen(false);
-      payForm.reset();
-      toast({ title: "Payment recorded successfully" });
-    },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const suspendMutation = useMutation({
@@ -180,10 +147,6 @@ export default function SubOwnerDetailPage() {
                 : <><CheckCircle className="w-4 h-4 mr-2" />Activate</>
               }
             </Button>
-            <Button onClick={() => setPayOpen(true)} data-testid="button-record-payment">
-              <DollarSign className="w-4 h-4 mr-2" />
-              Record Payment
-            </Button>
           </div>
         </div>
 
@@ -209,14 +172,14 @@ export default function SubOwnerDetailPage() {
 
           <Card className={subOwner.balance > 0 ? "border-destructive/30 bg-destructive/5" : ""}>
             <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding Debt</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Agents Total Debt</CardTitle>
               <AlertTriangle className={`w-4 h-4 ${subOwner.balance > 0 ? "text-destructive" : "text-green-500"}`} />
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${subOwner.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-balance">
                 {subOwner.balance > 0 ? formatCurrency(subOwner.balance) : "Settled"}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Amount owed to you</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total debt from agents</p>
             </CardContent>
           </Card>
 
@@ -409,63 +372,6 @@ export default function SubOwnerDetailPage() {
         </Tabs>
       </div>
 
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-primary" />
-              Record Payment from {subOwner.username}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="bg-muted rounded-md p-3 mb-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Current Debt:</span>
-              <span className={`font-bold ${subOwner.balance > 0 ? "text-destructive" : "text-green-600"}`}>
-                {formatCurrency(subOwner.balance)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Total Paid So Far:</span>
-              <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(subOwner.totalPayments)}</span>
-            </div>
-          </div>
-          <Form {...payForm}>
-            <form onSubmit={payForm.handleSubmit((d) => paymentMutation.mutate(d))} className="space-y-4">
-              <FormField control={payForm.control} name="amount" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount Received (IQD)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="5000"
-                      data-testid="input-payment-amount"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                  {field.value > 0 && subOwner.balance > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      After payment: debt will be <span className="font-bold">{formatCurrency(Math.max(0, subOwner.balance - field.value))}</span>
-                    </p>
-                  )}
-                </FormItem>
-              )} />
-              <FormField control={payForm.control} name="description" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
-                  <FormControl><Input {...field} placeholder="Cash payment, bank transfer..." /></FormControl>
-                </FormItem>
-              )} />
-              <DialogFooter>
-                <Button type="submit" disabled={paymentMutation.isPending} data-testid="button-confirm-payment">
-                  {paymentMutation.isPending ? "Recording..." : "Confirm Payment"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 }
