@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ type Transaction = {
 };
 
 export default function TransactionsPage() {
+  useEffect(() => { document.title = "Transactions | MoHmmeD VPN"; }, []);
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: agents = [] } = useQuery<any[]>({ queryKey: ["/api/agents"] });
 

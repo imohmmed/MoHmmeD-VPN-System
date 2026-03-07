@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,7 @@ const TRANSPORT_TYPES = [
 ];
 
 export default function ConfigTester() {
+  useEffect(() => { document.title = "Config Tester | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
   const [transport, setTransport] = useState("ws_tls");
   const [sni, setSni] = useState("m.facebook.com");

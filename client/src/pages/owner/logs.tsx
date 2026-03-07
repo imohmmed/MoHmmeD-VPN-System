@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,7 @@ const actionConfig: Record<string, { icon: any; color: string; label: string }> 
 };
 
 export default function LogsPage() {
+  useEffect(() => { document.title = "Activity Logs | MoHmmeD VPN"; }, []);
   const { data: logs = [], isLoading } = useQuery<Log[]>({ queryKey: ["/api/logs"] });
   const { data: agents = [] } = useQuery<any[]>({ queryKey: ["/api/agents"] });
 

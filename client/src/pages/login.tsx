@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  useEffect(() => { document.title = "Login | MoHmmeD VPN"; }, []);
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: login, isPending } = useLogin();
   const { toast } = useToast();

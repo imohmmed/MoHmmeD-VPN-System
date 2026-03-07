@@ -41,6 +41,9 @@ app.use(helmet({
     }
   } : false,
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: isProd ? { policy: "same-origin" as const } : false,
+  crossOriginOpenerPolicy: isProd ? { policy: "same-origin" as const } : false,
+  frameguard: isProd ? { action: "sameorigin" as const } : false,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));

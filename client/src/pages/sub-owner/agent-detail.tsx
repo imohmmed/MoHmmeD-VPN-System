@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -69,6 +69,7 @@ type AgentDetail = {
 };
 
 export default function SubOwnerAgentDetailPage() {
+  useEffect(() => { document.title = "Agent Details | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/sub-owner/agents/:id");

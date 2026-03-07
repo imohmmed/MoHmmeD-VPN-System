@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ type Transaction = {
 type Stats = { balance: number };
 
 export default function AgentTransactionsPage() {
+  useEffect(() => { document.title = "Transactions | MoHmmeD VPN"; }, []);
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: stats } = useStatsQuery<Stats>({ queryKey: ["/api/stats"] });
 

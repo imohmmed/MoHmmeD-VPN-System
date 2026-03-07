@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ function StatCard({ title, value, icon: Icon, description }: {
 }
 
 export default function SubOwnerDashboard() {
+  useEffect(() => { document.title = "Dashboard | MoHmmeD VPN"; }, []);
   const { user } = useAuth();
   const { data: stats, isLoading } = useQuery<Stats>({ queryKey: ["/api/stats"] });
   const { data: agents } = useQuery<any[]>({ queryKey: ["/api/my-agents"] });

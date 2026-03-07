@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -139,6 +139,7 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied, allowedConfigs }: {
 }
 
 export default function AgentUsersPage() {
+  useEffect(() => { document.title = "My Subscribers | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

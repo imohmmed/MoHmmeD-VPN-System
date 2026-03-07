@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -75,6 +75,7 @@ type SubOwnerDetail = {
 };
 
 export default function SubOwnerDetailPage() {
+  useEffect(() => { document.title = "Sub-Owner Details | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/owner/sub-owners/:id");

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +57,7 @@ type SubOwner = {
 };
 
 export default function SubOwnersPage() {
+  useEffect(() => { document.title = "Sub-Owners | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
