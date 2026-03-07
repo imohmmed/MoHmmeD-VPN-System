@@ -51,12 +51,13 @@ type Subscriber = {
   agentName?: string;
 };
 
-function SubscriberCard({ sub, onToggle, onDelete, onCopy, copied }: {
+function SubscriberCard({ sub, onToggle, onDelete, onCopy, copied, allowedConfigs }: {
   sub: Subscriber;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onCopy: (text: string) => void;
   copied: string | null;
+  allowedConfigs: string[];
 }) {
   const isExpired = new Date(sub.expiresAt) < new Date();
 
@@ -115,15 +116,21 @@ function SubscriberCard({ sub, onToggle, onDelete, onCopy, copied }: {
             <div className="flex items-center gap-2 text-xs flex-wrap">
               <Link2 className="w-3 h-3 text-blue-500" />
               <span className="font-mono text-blue-600 dark:text-blue-400 text-[11px]">Cloud Config</span>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
-              </Button>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-orange-600" data-testid={`button-copy-ws80-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80` ? "Copied!" : "Copy WS P80"}
-              </Button>
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-purple-600" data-testid={`button-copy-hu-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=hu&port=80`)}>
-                {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=hu&port=80` ? "Copied!" : "Copy HU P80"}
-              </Button>
+              {allowedConfigs.includes("ws") && (
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-green-600" data-testid={`button-copy-ws-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws`)}>
+                  {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws` ? "Copied!" : "Copy WS"}
+                </Button>
+              )}
+              {allowedConfigs.includes("ws_p80") && (
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-orange-600" data-testid={`button-copy-ws80-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80`)}>
+                  {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=ws&port=80` ? "Copied!" : "Copy WS P80"}
+                </Button>
+              )}
+              {allowedConfigs.includes("hu_p80") && (
+                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs text-purple-600" data-testid={`button-copy-hu-${sub.id}`} onClick={() => onCopy(`https://mohmmedvpn.com/configs/${sub.code}.json?type=hu&port=80`)}>
+                  {copied === `https://mohmmedvpn.com/configs/${sub.code}.json?type=hu&port=80` ? "Copied!" : "Copy HU P80"}
+                </Button>
+              )}
             </div>
           )}
           {sub.deviceId && (
@@ -148,6 +155,9 @@ export default function SubOwnerUsersPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { data: profile } = useQuery<{ allowedConfigs?: string[] }>({ queryKey: ["/api/auth/me"] });
+  const myAllowedConfigs = profile?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
 
   const { data: subs = [], isLoading } = useQuery<Subscriber[]>({ queryKey: ["/api/subscribers"] });
 
@@ -302,6 +312,7 @@ export default function SubOwnerUsersPage() {
                 onDelete={(id) => setDeleteId(id)}
                 onCopy={handleCopy}
                 copied={copied}
+                allowedConfigs={myAllowedConfigs}
               />
             ))}
           </div>
