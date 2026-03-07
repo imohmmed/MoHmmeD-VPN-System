@@ -462,6 +462,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(safe);
   });
 
+  app.patch("/api/sub-owners/:id/configs", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+    const { allowedConfigs } = req.body;
+    if (!Array.isArray(allowedConfigs)) return res.status(400).json({ message: "allowedConfigs must be an array" });
+    const valid = ["ws", "ws_p80", "hu_p80"];
+    const filtered = allowedConfigs.filter((c: string) => valid.includes(c));
+    const updated = await storage.updateAccount(subOwner.id, { allowedConfigs: filtered });
+
+    const agents = await storage.getAgentsByParent(subOwner.id);
+    for (const agent of agents) {
+      const agentConfigs = agent.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+      const restricted = agentConfigs.filter(c => filtered.includes(c));
+      if (restricted.length !== agentConfigs.length) {
+        await storage.updateAccount(agent.id, { allowedConfigs: restricted.length > 0 ? restricted : filtered });
+      }
+    }
+
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
   app.delete("/api/sub-owners/:id", requireAuth(["owner"]), async (req, res) => {
     if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const subOwner = await storage.getAccount(req.params.id);
@@ -577,10 +600,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
       return res.status(404).json({ message: "Agent not found" });
     }
+    const subOwner = await storage.getAccount(req.session.accountId!);
+    const subOwnerConfigs = subOwner?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
     const { allowedConfigs } = req.body;
     if (!Array.isArray(allowedConfigs)) return res.status(400).json({ message: "allowedConfigs must be an array" });
-    const valid = ["ws", "ws_p80", "hu_p80"];
-    const filtered = allowedConfigs.filter((c: string) => valid.includes(c));
+    const filtered = allowedConfigs.filter((c: string) => subOwnerConfigs.includes(c));
     const updated = await storage.updateAccount(agent.id, { allowedConfigs: filtered });
     const { passwordHash, ...safe } = updated;
     res.json(safe);
@@ -971,7 +995,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const agentAccount = subscriber.agentId ? await storage.getAccount(subscriber.agentId) : null;
       const creatorAccount = !agentAccount ? await storage.getAccount(subscriber.createdBy) : null;
-      const allowedConfigs = agentAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+      const allowedConfigs = agentAccount?.allowedConfigs || creatorAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
 
       let subOwnerAddress: string | null = null;
       if (agentAccount?.createdBy) {

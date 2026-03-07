@@ -68,6 +68,10 @@ type AgentDetail = {
   }>;
 };
 
+type MyProfile = {
+  allowedConfigs?: string[];
+};
+
 export default function SubOwnerAgentDetailPage() {
   useEffect(() => { document.title = "Agent Details | MoHmmeD VPN"; }, []);
   const { toast } = useToast();
@@ -75,6 +79,9 @@ export default function SubOwnerAgentDetailPage() {
   const [, params] = useRoute("/sub-owner/agents/:id");
   const agentId = params?.id;
   const [payOpen, setPayOpen] = useState(false);
+
+  const { data: profile } = useQuery<MyProfile>({ queryKey: ["/api/auth/me"] });
+  const myAllowedConfigs = profile?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
 
   const { data: agent, isLoading } = useQuery<AgentDetail>({
     queryKey: ["/api/my-agents", agentId],
@@ -215,7 +222,7 @@ export default function SubOwnerAgentDetailPage() {
               { key: "ws", label: "WS 443", color: "bg-green-500" },
               { key: "ws_p80", label: "WS P80", color: "bg-orange-500" },
               { key: "hu_p80", label: "HU P80", color: "bg-purple-500" },
-            ].map(({ key, label, color }) => {
+            ].filter(({ key }) => myAllowedConfigs.includes(key)).map(({ key, label, color }) => {
               const active = (agent.allowedConfigs || ["ws", "ws_p80", "hu_p80"]).includes(key);
               return (
                 <Button

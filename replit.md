@@ -25,6 +25,7 @@ Hierarchy: Owner → Sub-Owner → Agent → Subscriber
 - Agents accumulate debt per subscriber; owner/sub-owner records payments to reduce debt
 - Agent and sub-owner accounts can be suspended (can't login) or deleted (all records removed)
 - Sub-owner payments are distributed proportionally across their agents' outstanding balances
+- Owner sets `allowedConfigs` (ws, ws_p80, hu_p80) for sub-owners; sub-owner agents inherit same restriction. Config route enforces this for both agent and direct sub-owner subscribers.
 
 ## VPN Configuration
 - Server: 5.189.174.9 (mohmmedvpn.com)

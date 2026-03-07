@@ -106,6 +106,24 @@ export default function SubOwnerDetailPage() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const configsMutation = useMutation({
+    mutationFn: (allowedConfigs: string[]) => apiRequest("PATCH", `/api/sub-owners/${subOwnerId}/configs`, { allowedConfigs }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sub-owners", subOwnerId] });
+      toast({ title: "Config types updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleConfig = (configType: string) => {
+    if (!subOwner) return;
+    const current = subOwner.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+    const updated = current.includes(configType)
+      ? current.filter(c => c !== configType)
+      : [...current, configType];
+    configsMutation.mutate(updated);
+  };
+
   if (isLoading) {
     return (
       <Layout title="Owner Details">
@@ -181,6 +199,34 @@ export default function SubOwnerDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Allowed Config Types</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {[
+              { key: "ws", label: "WS 443", color: "bg-green-500" },
+              { key: "ws_p80", label: "WS P80", color: "bg-orange-500" },
+              { key: "hu_p80", label: "HU P80", color: "bg-purple-500" },
+            ].map(({ key, label, color }) => {
+              const active = (subOwner.allowedConfigs || ["ws", "ws_p80", "hu_p80"]).includes(key);
+              return (
+                <Button
+                  key={key}
+                  variant={active ? "default" : "outline"}
+                  size="sm"
+                  className={active ? `${color} text-white hover:opacity-80` : ""}
+                  onClick={() => toggleConfig(key)}
+                  disabled={configsMutation.isPending}
+                  data-testid={`button-toggle-config-${key}`}
+                >
+                  {active ? "✓ " : ""}{label}
+                </Button>
+              );
+            })}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
