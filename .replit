@@ -42,12 +42,8 @@ waitForPort = 5000
 
 [userenv.shared]
 MARZBAN_URL = "http://127.0.0.1:8000"
-MARZBAN_USERNAME = "MoHmmeD9"
-MARZBAN_PASSWORD = "Zvh8711nj"
 REALITY_PUBLIC_KEY = "YeWI99AQZ1fc6ZP18lwcrOOMZaifGKdjcHSD9EuGTXg"
 REALITY_SHORT_ID = "0123456789abcdef"
 REALITY_SERVER_NAME = "yahoo.com"
 VPN_SERVER_DOMAIN = "mohmmedvpn.com"
 VPN_SERVER_PORT = "8443"
-OWNER_EMAIL = "it.mohmmed@yahoo.com"
-OWNER_PASSWORD = "ZVwas781)@@"
