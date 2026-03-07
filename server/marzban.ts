@@ -67,7 +67,7 @@ export async function createMarzbanUser(username: string, expireTimestamp: numbe
       username,
       status: "active",
       proxies: { vless: { flow: "xtls-rprx-vision" } },
-      inbounds: { vless: ["VLESS_REALITY", "VLESS_WS"] },
+      inbounds: { vless: ["VLESS_REALITY", "VLESS_WS", "VLESS_HTTPUPGRADE"] },
       expire: expireTimestamp,
       data_limit: 0,
       data_limit_reset_strategy: "no_reset",
