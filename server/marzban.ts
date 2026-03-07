@@ -14,10 +14,13 @@ async function getToken(forceRefresh = false): Promise<string> {
   if (!forceRefresh && token && Date.now() < tokenExpiry) return token;
 
   const url = `${getBaseUrl()}/api/admin/token`;
+  if (!process.env.MARZBAN_USERNAME || !process.env.MARZBAN_PASSWORD) {
+    throw new Error("MARZBAN_USERNAME and MARZBAN_PASSWORD environment variables are required");
+  }
   const body = new URLSearchParams({
     grant_type: "password",
-    username: process.env.MARZBAN_USERNAME || "admin",
-    password: process.env.MARZBAN_PASSWORD || "admin",
+    username: process.env.MARZBAN_USERNAME,
+    password: process.env.MARZBAN_PASSWORD,
   });
 
   const res = await fetch(url, {

@@ -70,7 +70,11 @@ function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
 }
 
 async function seedOwner() {
-  const email = process.env.OWNER_EMAIL || "it.mohmmed@yahoo.com";
+  const email = process.env.OWNER_EMAIL;
+  if (!email) {
+    console.error("WARNING: OWNER_EMAIL not set in environment variables");
+    return;
+  }
   const password = process.env.OWNER_PASSWORD;
   if (!password) {
     console.error("WARNING: OWNER_PASSWORD not set in environment variables");

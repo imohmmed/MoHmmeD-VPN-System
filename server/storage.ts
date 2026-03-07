@@ -221,20 +221,21 @@ function generateCode(): string {
 
 function generateVpnConfig(deviceId?: string) {
   const uuid = randomUUID();
+  const serverDomain = process.env.VPN_SERVER_DOMAIN || "localhost";
   return {
     v: "2",
     ps: "MoHmmeD VPN",
-    add: "5.189.174.9",
+    add: serverDomain,
     port: "443",
     id: uuid,
     aid: "0",
     scy: "auto",
     net: "ws",
     type: "none",
-    host: "5.189.174.9",
+    host: serverDomain,
     path: `/vpn/${deviceId || uuid.split("-")[0]}`,
     tls: "tls",
-    sni: "5.189.174.9",
+    sni: serverDomain,
     alpn: "",
     fp: "",
     remark: `MoHmmeD VPN - ${deviceId ? deviceId.substring(0, 8) : uuid.substring(0, 8)}`,

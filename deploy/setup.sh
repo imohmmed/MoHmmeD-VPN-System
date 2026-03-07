@@ -6,7 +6,8 @@ echo "  MoHmmeD VPN - VPS Deployment Script"
 echo "========================================="
 echo ""
 
-read -p "Enter PostgreSQL password for mohmmedadmin: " DB_PASSWORD
+read -s -p "Enter PostgreSQL password for mohmmedadmin: " DB_PASSWORD
+echo ""
 if [ -z "$DB_PASSWORD" ]; then
     echo "Error: Database password cannot be empty"
     exit 1
