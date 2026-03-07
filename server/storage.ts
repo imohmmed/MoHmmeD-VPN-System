@@ -11,9 +11,9 @@ export interface IStorage {
   getAccountByUsername(username: string): Promise<Account | undefined>;
   createAccount(data: {
     email: string; username: string; password: string;
-    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; port?: number;
+    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; serverAddress?: string;
   }): Promise<Account>;
-  updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "port">>): Promise<Account>;
+  updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "serverAddress">>): Promise<Account>;
   deleteAccount(id: string): Promise<void>;
   getAgents(): Promise<Account[]>;
   getSubOwners(): Promise<Account[]>;
@@ -65,9 +65,9 @@ export class DbStorage implements IStorage {
     return acc;
   }
 
-  async createAccount({ email, username, password, role, createdBy, notes, prefix, port }: {
+  async createAccount({ email, username, password, role, createdBy, notes, prefix, serverAddress }: {
     email: string; username: string; password: string;
-    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; port?: number;
+    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; serverAddress?: string;
   }) {
     const passwordHash = await bcrypt.hash(password, 12);
     const [acc] = await db.insert(accounts).values({
@@ -75,12 +75,12 @@ export class DbStorage implements IStorage {
       createdBy: createdBy || null,
       notes: notes || null,
       prefix: prefix || null,
-      port: port || null,
+      serverAddress: serverAddress || null,
     }).returning();
     return acc;
   }
 
-  async updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "port">>) {
+  async updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "serverAddress">>) {
     const [acc] = await db.update(accounts).set(data).where(eq(accounts.id, id)).returning();
     return acc;
   }

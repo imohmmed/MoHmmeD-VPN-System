@@ -34,7 +34,7 @@ const createSubOwnerSchema = z.object({
   username: z.string().min(3, "Min 3 characters"),
   password: z.string().min(6, "Min 6 characters"),
   prefix: z.string().min(2, "Min 2 characters").max(15, "Max 15 characters").regex(/^[a-zA-Z0-9]+$/, "English letters and numbers only"),
-  port: z.number().min(1, "Port required").max(65535, "Invalid port"),
+  serverAddress: z.string().min(1, "Server address required"),
   notes: z.string().optional(),
 });
 
@@ -50,7 +50,7 @@ type SubOwner = {
   isActive: boolean;
   createdAt: string;
   balance: number;
-  port: number;
+  serverAddress: string;
   agentsCount: number;
   subscribersCount: number;
   notes?: string;
@@ -68,7 +68,7 @@ export default function SubOwnersPage() {
 
   const form = useForm({
     resolver: zodResolver(createSubOwnerSchema),
-    defaultValues: { email: "", username: "", password: "", prefix: "", port: 0, notes: "" },
+    defaultValues: { email: "", username: "", password: "", prefix: "", serverAddress: "", notes: "" },
   });
 
   const payForm = useForm({
@@ -175,16 +175,14 @@ export default function SubOwnersPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="port" render={({ field }) => (
+                  <FormField control={form.control} name="serverAddress" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Port</FormLabel>
+                      <FormLabel>Server Address (Domain)</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          placeholder="e.g. 8443"
-                          data-testid="input-sub-owner-port"
+                          placeholder="e.g. kemo.com"
+                          data-testid="input-sub-owner-server-address"
                           {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -248,7 +246,7 @@ export default function SubOwnersPage() {
                         <Badge variant={so.isActive ? "secondary" : "destructive"} className="text-xs">
                           {so.isActive ? "Active" : "Suspended"}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">Port: {so.port}</Badge>
+                        <Badge variant="outline" className="text-xs">{so.serverAddress}</Badge>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
                         <Mail className="w-3 h-3 text-muted-foreground" />

@@ -11,7 +11,7 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 
 ## User Roles & Hierarchy
 1. **Owner** (it.mohmmed@yahoo.com): Full admin access — manages sub-owners, agents, subscribers, transactions, activity logs, config tester
-2. **Sub-Owner**: Mini-owner created by the main owner — has their own agents, dashboard, transactions, can record payments. Has a `port` field (used in VPN configs instead of domain). NO config tester access.
+2. **Sub-Owner**: Mini-owner created by the main owner — has their own agents, dashboard, transactions, can record payments. Has a `serverAddress` field (domain used in VPN configs instead of default server domain). NO config tester access.
 3. **Agent**: Reseller account — creates subscribers (5,000 IQD each), manages their own subscribers
 4. **Subscriber**: VPN user with name, device ID, VPN code, and cloud config URL (not a login account)
 
@@ -60,7 +60,7 @@ Hierarchy: Owner → Sub-Owner → Agent → Subscriber
 - Record Payment deducts from agent's outstanding debt
 
 ## Database Tables
-- `accounts` - Login accounts (owner/sub_owner/agent roles). Columns: id, email, username, passwordHash, role, isActive, createdBy, prefix, allowedConfigs, port
+- `accounts` - Login accounts (owner/sub_owner/agent roles). Columns: id, email, username, passwordHash, role, isActive, createdBy, prefix, allowedConfigs, server_address
 - `subscribers` - VPN subscribers with name, device ID, code, config, expiry, agentId
 - `transactions` - Financial transactions per agent (purchase/payment)
 - `activity_logs` - Audit trail of all actions

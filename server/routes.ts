@@ -271,13 +271,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const agent = await storage.getAccount(req.params.id);
     if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
 
-    const { email, username, notes, prefix, port } = req.body;
+    const { email, username, notes, prefix } = req.body;
     const updateData: any = {};
     if (email) updateData.email = sanitize(email).toLowerCase();
     if (username) updateData.username = sanitize(username);
     if (notes !== undefined) updateData.notes = notes ? sanitize(notes) : null;
     if (prefix !== undefined) updateData.prefix = prefix ? sanitize(prefix) : null;
-    if (port !== undefined) updateData.port = port;
 
     const updated = await storage.updateAccount(agent.id, updateData);
     const { passwordHash, ...safe } = updated;
@@ -344,7 +343,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/sub-owners", requireAuth(["owner"]), async (req, res) => {
     try {
-      const { email, username, password, notes, prefix, port } = req.body;
+      const { email, username, password, notes, prefix, serverAddress } = req.body;
       if (!email || !username || !password) return res.status(400).json({ message: "Missing fields" });
 
       const cleanEmail = sanitize(email).toLowerCase();
@@ -357,7 +356,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const subOwner = await storage.createAccount({
         email: cleanEmail, username: cleanUsername, password, role: "sub_owner",
         createdBy: req.session.accountId, notes: notes ? sanitize(notes) : undefined,
-        prefix: cleanPrefix, port: port || undefined,
+        prefix: cleanPrefix, serverAddress: serverAddress ? sanitize(serverAddress) : undefined,
       });
 
       await storage.createLog({
@@ -445,13 +444,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const subOwner = await storage.getAccount(req.params.id);
     if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
 
-    const { email, username, notes, prefix, port } = req.body;
+    const { email, username, notes, prefix, serverAddress } = req.body;
     const updateData: any = {};
     if (email) updateData.email = sanitize(email).toLowerCase();
     if (username) updateData.username = sanitize(username);
     if (notes !== undefined) updateData.notes = notes ? sanitize(notes) : null;
     if (prefix !== undefined) updateData.prefix = prefix ? sanitize(prefix) : null;
-    if (port !== undefined) updateData.port = port;
+    if (serverAddress !== undefined) updateData.serverAddress = serverAddress ? sanitize(serverAddress) : null;
 
     const updated = await storage.updateAccount(subOwner.id, updateData);
     const { passwordHash, ...safe } = updated;
@@ -1014,14 +1013,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const agentAccount = await storage.getAccount(subscriber.agentId);
       const allowedConfigs = agentAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
 
-      let subOwnerPort: number | null = null;
+      let subOwnerAddress: string | null = null;
       if (agentAccount?.createdBy) {
         const parentAccount = await storage.getAccount(agentAccount.createdBy);
-        if (parentAccount?.role === "sub_owner" && parentAccount.port) {
-          subOwnerPort = parentAccount.port;
+        if (parentAccount?.role === "sub_owner" && parentAccount.serverAddress) {
+          subOwnerAddress = parentAccount.serverAddress;
         }
       }
-      const serverDomain = defaultServerDomain;
+      const serverDomain = subOwnerAddress || defaultServerDomain;
 
       let requestedConfigKey = "ws";
       if (configType === "hu") {

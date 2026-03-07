@@ -23,7 +23,7 @@ export const accounts = pgTable("accounts", {
   notes: text("notes"),
   prefix: text("prefix"),
   allowedConfigs: text("allowed_configs").array().default(sql`ARRAY['ws','ws_p80','hu_p80']`),
-  port: integer("port"),
+  serverAddress: text("server_address"),
 });
 
 export const subscribers = pgTable("subscribers", {

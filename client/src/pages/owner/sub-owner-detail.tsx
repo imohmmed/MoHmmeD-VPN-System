@@ -36,7 +36,7 @@ type SubOwnerDetail = {
   isActive: boolean;
   createdAt: string;
   notes?: string;
-  port: number;
+  serverAddress?: string;
   prefix?: string;
   allowedConfigs?: string[];
   balance: number;
@@ -162,7 +162,7 @@ export default function SubOwnerDetailPage() {
                   <Badge variant={subOwner.isActive ? "secondary" : "destructive"}>
                     {subOwner.isActive ? "Active" : "Suspended"}
                   </Badge>
-                  <Badge variant="outline">Port: {subOwner.port}</Badge>
+                  {subOwner.serverAddress && <Badge variant="outline">{subOwner.serverAddress}</Badge>}
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Mail className="w-3.5 h-3.5" />
