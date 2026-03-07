@@ -120,9 +120,11 @@ export class DbStorage implements IStorage {
   async getSubscribersByParent(parentId: string) {
     const agents = await this.getAgentsByParent(parentId);
     const agentIds = agents.map(a => a.id);
-    if (!agentIds.length) return [];
     const allSubs = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
-    return allSubs.filter(s => s.agentId && agentIds.includes(s.agentId));
+    return allSubs.filter(s =>
+      s.createdBy === parentId ||
+      (s.agentId && agentIds.includes(s.agentId))
+    );
   }
 
   async getTransactionsByParent(parentId: string) {

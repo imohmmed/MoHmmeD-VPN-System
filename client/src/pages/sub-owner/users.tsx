@@ -6,13 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogDescription,
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Users, Calendar, Copy, Check,
-  Power, Smartphone, Link2, UserCheck,
+  Users, Calendar, Copy, Check, Plus,
+  Power, Smartphone, Link2, UserCheck, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+
+const createSubSchema = z.object({
+  name: z.string().min(2, "Min 2 characters"),
+  deviceId: z.string().optional(),
+  durationMonths: z.number().min(1).max(12),
+  notes: z.string().optional(),
+});
 
 type Subscriber = {
   id: string;
@@ -25,15 +44,17 @@ type Subscriber = {
   subscriptionUrl?: string;
   isActive: boolean;
   durationMonths: number;
+  pricePaid: number;
   expiresAt: string;
   createdAt: string;
   agentId?: string;
   agentName?: string;
 };
 
-function SubscriberCard({ sub, onToggle, onCopy, copied }: {
+function SubscriberCard({ sub, onToggle, onDelete, onCopy, copied }: {
   sub: Subscriber;
   onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
   onCopy: (text: string) => void;
   copied: string | null;
 }) {
@@ -72,6 +93,15 @@ function SubscriberCard({ sub, onToggle, onCopy, copied }: {
               data-testid={`button-toggle-${sub.id}`}
             >
               <Power className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive"
+              onClick={() => onDelete(sub.id)}
+              data-testid={`button-delete-${sub.id}`}
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -116,14 +146,44 @@ export default function SubOwnerUsersPage() {
   const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: subs = [], isLoading } = useQuery<Subscriber[]>({ queryKey: ["/api/subscribers"] });
+
+  const form = useForm({
+    resolver: zodResolver(createSubSchema),
+    defaultValues: { name: "", deviceId: "", durationMonths: 1, notes: "" },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/subscribers", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setCreateOpen(false);
+      form.reset();
+      toast({ title: "Subscriber created successfully" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
 
   const toggleMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/subscribers/${id}/toggle`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
       toast({ title: "Status updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/subscribers/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscribers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setDeleteId(null);
+      toast({ title: "Subscriber deleted" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -151,6 +211,63 @@ export default function SubOwnerUsersPage() {
             <h2 className="text-2xl font-bold text-foreground">All Users</h2>
             <p className="text-muted-foreground text-sm mt-0.5">{activeCount} active / {subs.length} total</p>
           </div>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-user">
+                <Plus className="w-4 h-4 mr-2" />Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add New User</DialogTitle></DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl><Input {...field} placeholder="Subscriber name" data-testid="input-sub-name" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="deviceId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Device ID (optional)</FormLabel>
+                      <FormControl><Input {...field} placeholder="NPV Tunnel Device ID" data-testid="input-sub-device" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="durationMonths" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration</FormLabel>
+                      <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-duration">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">1 Month</SelectItem>
+                          <SelectItem value="2">2 Months</SelectItem>
+                          <SelectItem value="3">3 Months</SelectItem>
+                          <SelectItem value="6">6 Months</SelectItem>
+                          <SelectItem value="12">12 Months</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="notes" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (optional)</FormLabel>
+                      <FormControl><Input {...field} placeholder="Any notes..." data-testid="input-sub-notes" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <DialogFooter>
+                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-confirm-create">
+                      {createMutation.isPending ? "Creating..." : "Create User"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Input
@@ -172,7 +289,7 @@ export default function SubOwnerUsersPage() {
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="w-12 h-12 text-muted-foreground mb-3" />
               <p className="text-muted-foreground font-medium">No users found</p>
-              <p className="text-xs text-muted-foreground mt-1">Users created by your agents will appear here</p>
+              <p className="text-xs text-muted-foreground mt-1">Add users directly or through your agents</p>
             </CardContent>
           </Card>
         ) : (
@@ -182,6 +299,7 @@ export default function SubOwnerUsersPage() {
                 key={sub.id}
                 sub={sub}
                 onToggle={(id) => toggleMutation.mutate(id)}
+                onDelete={(id) => setDeleteId(id)}
                 onCopy={handleCopy}
                 copied={copied}
               />
@@ -189,6 +307,21 @@ export default function SubOwnerUsersPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Subscriber</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete this subscriber and their VPN access.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)} className="bg-destructive text-destructive-foreground" data-testid="button-confirm-delete">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

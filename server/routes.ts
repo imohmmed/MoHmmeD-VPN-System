@@ -31,6 +31,11 @@ async function getConfigPrefix(subscriber: any): Promise<string> {
     if (agent?.prefix) return agent.prefix;
     if (agent?.username) return agent.username;
   }
+  if (subscriber.createdBy) {
+    const creator = await storage.getAccount(subscriber.createdBy);
+    if (creator?.prefix) return creator.prefix;
+    if (creator?.username) return creator.username;
+  }
   return "MoHmmeD VPN";
 }
 
@@ -689,7 +694,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const agentMap = new Map(agents.map(a => [a.id, a.prefix || a.username]));
       const subsWithAgent = subs.map(s => ({
         ...s,
-        agentName: s.agentId ? agentMap.get(s.agentId) || "Unknown" : "Owner",
+        agentName: s.agentId ? agentMap.get(s.agentId) || "Unknown" : (req.session.role === "sub_owner" && s.createdBy === req.session.accountId ? "Direct" : "Owner"),
       }));
       return res.json(subsWithAgent);
     }
@@ -771,10 +776,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     if (req.session.role === "sub_owner") {
-      const myAgents = await storage.getAgentsByParent(req.session.accountId!);
-      const myAgentIds = myAgents.map(a => a.id);
-      if (!existing.agentId || !myAgentIds.includes(existing.agentId)) {
-        return res.status(403).json({ message: "Forbidden" });
+      const isDirectCreate = existing.createdBy === req.session.accountId;
+      if (!isDirectCreate) {
+        const myAgents = await storage.getAgentsByParent(req.session.accountId!);
+        const myAgentIds = myAgents.map(a => a.id);
+        if (!existing.agentId || !myAgentIds.includes(existing.agentId)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
       }
     }
 
@@ -803,10 +811,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     if (req.session.role === "sub_owner") {
-      const myAgents = await storage.getAgentsByParent(req.session.accountId!);
-      const myAgentIds = myAgents.map(a => a.id);
-      if (!sub.agentId || !myAgentIds.includes(sub.agentId)) {
-        return res.status(403).json({ message: "Forbidden" });
+      const isDirectCreate = sub.createdBy === req.session.accountId;
+      if (!isDirectCreate) {
+        const myAgents = await storage.getAgentsByParent(req.session.accountId!);
+        const myAgentIds = myAgents.map(a => a.id);
+        if (!sub.agentId || !myAgentIds.includes(sub.agentId)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
       }
     }
 
@@ -958,7 +969,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const configType = rawType === "ws" ? "ws" : rawType === "hu" ? "hu" : "reality";
       const queryPort = typeof req.query.port === "string" ? req.query.port : "";
 
-      const agentAccount = await storage.getAccount(subscriber.agentId);
+      const agentAccount = subscriber.agentId ? await storage.getAccount(subscriber.agentId) : null;
+      const creatorAccount = !agentAccount ? await storage.getAccount(subscriber.createdBy) : null;
       const allowedConfigs = agentAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
 
       let subOwnerAddress: string | null = null;
@@ -967,6 +979,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (parentAccount?.role === "sub_owner" && parentAccount.serverAddress) {
           subOwnerAddress = parentAccount.serverAddress;
         }
+      } else if (creatorAccount?.role === "sub_owner" && creatorAccount.serverAddress) {
+        subOwnerAddress = creatorAccount.serverAddress;
       }
       const serverDomain = subOwnerAddress || defaultServerDomain;
 
