@@ -9,6 +9,8 @@ import LoginPage from "@/pages/login";
 import OwnerDashboard from "@/pages/owner/dashboard";
 import AgentsPage from "@/pages/owner/agents";
 import AgentDetailPage from "@/pages/owner/agent-detail";
+import SubOwnersPage from "@/pages/owner/sub-owners";
+import SubOwnerDetailPage from "@/pages/owner/sub-owner-detail";
 import OwnerUsersPage from "@/pages/owner/users";
 import TransactionsPage from "@/pages/owner/transactions";
 import LogsPage from "@/pages/owner/logs";
@@ -16,9 +18,14 @@ import AgentDashboard from "@/pages/agent/dashboard";
 import AgentUsersPage from "@/pages/agent/users";
 import AgentTransactionsPage from "@/pages/agent/transactions";
 import ConfigTester from "@/pages/owner/config-tester";
+import SubOwnerDashboard from "@/pages/sub-owner/dashboard";
+import SubOwnerAgentsPage from "@/pages/sub-owner/agents";
+import SubOwnerAgentDetailPage from "@/pages/sub-owner/agent-detail";
+import SubOwnerUsersPage from "@/pages/sub-owner/users";
+import SubOwnerTransactionsPage from "@/pages/sub-owner/transactions";
 import NotFound from "@/pages/not-found";
 
-function AuthGuard({ children, roles }: { children: React.ReactNode; roles: Array<"owner" | "agent" | "user"> }) {
+function AuthGuard({ children, roles }: { children: React.ReactNode; roles: Array<"owner" | "sub_owner" | "agent" | "user"> }) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -39,6 +46,7 @@ function AuthGuard({ children, roles }: { children: React.ReactNode; roles: Arra
 
   if (!roles.includes(user.role)) {
     if (user.role === "owner") return <Redirect to="/owner" />;
+    if (user.role === "sub_owner") return <Redirect to="/sub-owner" />;
     if (user.role === "agent") return <Redirect to="/agent" />;
     return <Redirect to="/login" />;
   }
@@ -59,6 +67,7 @@ function HomeRedirect() {
 
   if (!user) return <Redirect to="/login" />;
   if (user.role === "owner") return <Redirect to="/owner" />;
+  if (user.role === "sub_owner") return <Redirect to="/sub-owner" />;
   if (user.role === "agent") return <Redirect to="/agent" />;
   return <Redirect to="/login" />;
 }
@@ -72,6 +81,16 @@ function Router() {
       <Route path="/owner">
         <AuthGuard roles={["owner"]}>
           <OwnerDashboard />
+        </AuthGuard>
+      </Route>
+      <Route path="/owner/sub-owners/:id">
+        <AuthGuard roles={["owner"]}>
+          <SubOwnerDetailPage />
+        </AuthGuard>
+      </Route>
+      <Route path="/owner/sub-owners">
+        <AuthGuard roles={["owner"]}>
+          <SubOwnersPage />
         </AuthGuard>
       </Route>
       <Route path="/owner/agents/:id">
@@ -102,6 +121,32 @@ function Router() {
       <Route path="/owner/config-tester">
         <AuthGuard roles={["owner"]}>
           <ConfigTester />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/sub-owner">
+        <AuthGuard roles={["sub_owner"]}>
+          <SubOwnerDashboard />
+        </AuthGuard>
+      </Route>
+      <Route path="/sub-owner/agents/:id">
+        <AuthGuard roles={["sub_owner"]}>
+          <SubOwnerAgentDetailPage />
+        </AuthGuard>
+      </Route>
+      <Route path="/sub-owner/agents">
+        <AuthGuard roles={["sub_owner"]}>
+          <SubOwnerAgentsPage />
+        </AuthGuard>
+      </Route>
+      <Route path="/sub-owner/users">
+        <AuthGuard roles={["sub_owner"]}>
+          <SubOwnerUsersPage />
+        </AuthGuard>
+      </Route>
+      <Route path="/sub-owner/transactions">
+        <AuthGuard roles={["sub_owner"]}>
+          <SubOwnerTransactionsPage />
         </AuthGuard>
       </Route>
 

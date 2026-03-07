@@ -9,16 +9,20 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Session-based authentication with bcryptjs
 
-## User Roles
-1. **Owner** (it.mohmmed@yahoo.com): Full admin access — manages agents, subscribers, transactions, activity logs
-2. **Agent**: Reseller account — creates subscribers (5,000 IQD each), manages their own subscribers
-3. **Subscriber**: VPN user with name, device ID, VPN code, and cloud config URL (not a login account)
+## User Roles & Hierarchy
+1. **Owner** (it.mohmmed@yahoo.com): Full admin access — manages sub-owners, agents, subscribers, transactions, activity logs, config tester
+2. **Sub-Owner**: Mini-owner created by the main owner — has their own agents, dashboard, transactions, can record payments. Has a `port` field (used in VPN configs instead of domain). NO config tester access.
+3. **Agent**: Reseller account — creates subscribers (5,000 IQD each), manages their own subscribers
+4. **Subscriber**: VPN user with name, device ID, VPN code, and cloud config URL (not a login account)
+
+Hierarchy: Owner → Sub-Owner → Agent → Subscriber
 
 ## Business Logic
 - Each subscriber costs agents 5,000 IQD
 - Owner creates subscribers for free
-- Agents accumulate debt per subscriber; owner records payments to reduce debt
-- Agent accounts can be suspended (can't login) or deleted (all records removed)
+- Agents accumulate debt per subscriber; owner/sub-owner records payments to reduce debt
+- Agent and sub-owner accounts can be suspended (can't login) or deleted (all records removed)
+- Sub-owner payments are distributed proportionally across their agents' outstanding balances
 
 ## VPN Configuration
 - Server: 5.189.174.9 (mohmmedvpn.com)
@@ -33,11 +37,19 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 ## Key Pages
 - `/login` - Authentication
 - `/owner` - Owner dashboard with stats
+- `/owner/sub-owners` - Sub-owner management (create, suspend, delete, record payments)
+- `/owner/sub-owners/:id` - Sub-owner detail (agents, subscribers, transactions, payment recording)
 - `/owner/agents` - Agent management (create, suspend, delete, record payments)
 - `/owner/agents/:id` - Agent detail page (subscribers, transactions, logs, payment recording)
 - `/owner/users` - All subscribers management (unified user+code view)
 - `/owner/transactions` - Financial records
 - `/owner/logs` - Activity audit log
+- `/owner/config-tester` - VPN config testing (owner-exclusive)
+- `/sub-owner` - Sub-owner dashboard
+- `/sub-owner/agents` - Sub-owner's agents management
+- `/sub-owner/agents/:id` - Sub-owner's agent detail
+- `/sub-owner/users` - Sub-owner's subscribers
+- `/sub-owner/transactions` - Sub-owner's financial history
 - `/agent` - Agent dashboard
 - `/agent/users` - Agent's subscribers
 - `/agent/transactions` - Agent's financial history
@@ -48,9 +60,9 @@ A full-stack VPN subscription management platform built for selling NPV Tunnel V
 - Record Payment deducts from agent's outstanding debt
 
 ## Database Tables
-- `accounts` - Login accounts (owner/agent roles only)
-- `subscribers` - VPN subscribers with name, device ID, code, config, expiry
-- `transactions` - Financial transactions per agent
+- `accounts` - Login accounts (owner/sub_owner/agent roles). Columns: id, email, username, passwordHash, role, isActive, createdBy, prefix, allowedConfigs, port
+- `subscribers` - VPN subscribers with name, device ID, code, config, expiry, agentId
+- `transactions` - Financial transactions per agent (purchase/payment)
 - `activity_logs` - Audit trail of all actions
 
 ## Marzban Integration

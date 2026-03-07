@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Users, CreditCard, ScrollText, UserCog,
-  Shield, LogOut, ChevronRight, FlaskConical,
+  Shield, LogOut, ChevronRight, FlaskConical, Crown,
 } from "lucide-react";
 import { useAuth, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,19 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const ownerNav = [
   { title: "Dashboard", url: "/owner", icon: LayoutDashboard },
+  { title: "Owners", url: "/owner/sub-owners", icon: Crown },
   { title: "Agents", url: "/owner/agents", icon: UserCog },
   { title: "Users", url: "/owner/users", icon: Users },
   { title: "Transactions", url: "/owner/transactions", icon: CreditCard },
   { title: "Activity Logs", url: "/owner/logs", icon: ScrollText },
   { title: "Config Tester", url: "/owner/config-tester", icon: FlaskConical },
+];
+
+const subOwnerNav = [
+  { title: "Dashboard", url: "/sub-owner", icon: LayoutDashboard },
+  { title: "Agents", url: "/sub-owner/agents", icon: UserCog },
+  { title: "Users", url: "/sub-owner/users", icon: Users },
+  { title: "Transactions", url: "/sub-owner/transactions", icon: CreditCard },
 ];
 
 const agentNav = [
@@ -32,7 +40,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { mutate: logout } = useLogout();
 
-  const navItems = user?.role === "owner" ? ownerNav : agentNav;
+  const navItems = user?.role === "owner" ? ownerNav : user?.role === "sub_owner" ? subOwnerNav : agentNav;
 
   return (
     <Sidebar>
@@ -89,7 +97,7 @@ export function AppSidebar() {
               <p className="text-xs font-medium text-sidebar-foreground truncate">{user?.username}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                  {user?.role === "owner" ? "Owner" : "Agent"}
+                  {user?.role === "owner" ? "Owner" : user?.role === "sub_owner" ? "Sub Owner" : "Agent"}
                 </Badge>
               </div>
             </div>

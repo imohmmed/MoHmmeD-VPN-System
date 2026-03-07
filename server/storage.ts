@@ -11,11 +11,16 @@ export interface IStorage {
   getAccountByUsername(username: string): Promise<Account | undefined>;
   createAccount(data: {
     email: string; username: string; password: string;
-    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string;
+    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; port?: number;
   }): Promise<Account>;
-  updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username">>): Promise<Account>;
+  updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "port">>): Promise<Account>;
   deleteAccount(id: string): Promise<void>;
   getAgents(): Promise<Account[]>;
+  getSubOwners(): Promise<Account[]>;
+  getAgentsByParent(parentId: string): Promise<Account[]>;
+  getSubscribersByParent(parentId: string): Promise<Subscriber[]>;
+  getTransactionsByParent(parentId: string): Promise<Transaction[]>;
+  deleteSubOwner(id: string): Promise<void>;
   verifyPassword(account: Account, password: string): Promise<boolean>;
 
   getSubscribers(agentId?: string): Promise<Subscriber[]>;
@@ -60,9 +65,9 @@ export class DbStorage implements IStorage {
     return acc;
   }
 
-  async createAccount({ email, username, password, role, createdBy, notes, prefix }: {
+  async createAccount({ email, username, password, role, createdBy, notes, prefix, port }: {
     email: string; username: string; password: string;
-    role: "owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string;
+    role: "owner" | "sub_owner" | "agent" | "user"; createdBy?: string; notes?: string; prefix?: string; port?: number;
   }) {
     const passwordHash = await bcrypt.hash(password, 12);
     const [acc] = await db.insert(accounts).values({
@@ -70,11 +75,12 @@ export class DbStorage implements IStorage {
       createdBy: createdBy || null,
       notes: notes || null,
       prefix: prefix || null,
+      port: port || null,
     }).returning();
     return acc;
   }
 
-  async updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username">>) {
+  async updateAccount(id: string, data: Partial<Pick<Account, "isActive" | "notes" | "email" | "username" | "allowedConfigs" | "port">>) {
     const [acc] = await db.update(accounts).set(data).where(eq(accounts.id, id)).returning();
     return acc;
   }
@@ -86,12 +92,45 @@ export class DbStorage implements IStorage {
     await db.delete(accounts).where(eq(accounts.id, id));
   }
 
+  async deleteSubOwner(id: string) {
+    const agents = await this.getAgentsByParent(id);
+    for (const agent of agents) {
+      await this.deleteAccount(agent.id);
+    }
+    await db.delete(activityLogs).where(eq(activityLogs.accountId, id));
+    await db.delete(accounts).where(eq(accounts.id, id));
+  }
+
   async verifyPassword(account: Account, password: string) {
     return bcrypt.compare(password, account.passwordHash);
   }
 
   async getAgents() {
     return db.select().from(accounts).where(eq(accounts.role, "agent")).orderBy(desc(accounts.createdAt));
+  }
+
+  async getSubOwners() {
+    return db.select().from(accounts).where(eq(accounts.role, "sub_owner")).orderBy(desc(accounts.createdAt));
+  }
+
+  async getAgentsByParent(parentId: string) {
+    return db.select().from(accounts).where(and(eq(accounts.role, "agent"), eq(accounts.createdBy, parentId))).orderBy(desc(accounts.createdAt));
+  }
+
+  async getSubscribersByParent(parentId: string) {
+    const agents = await this.getAgentsByParent(parentId);
+    const agentIds = agents.map(a => a.id);
+    if (!agentIds.length) return [];
+    const allSubs = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+    return allSubs.filter(s => s.agentId && agentIds.includes(s.agentId));
+  }
+
+  async getTransactionsByParent(parentId: string) {
+    const agents = await this.getAgentsByParent(parentId);
+    const agentIds = agents.map(a => a.id);
+    if (!agentIds.length) return [];
+    const allTxs = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
+    return allTxs.filter(t => agentIds.includes(t.agentId));
   }
 
   // Subscribers

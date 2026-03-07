@@ -6,7 +6,7 @@ export type AuthUser = {
   id: string;
   email: string;
   username: string;
-  role: "owner" | "agent" | "user";
+  role: "owner" | "sub_owner" | "agent" | "user";
   isActive: boolean;
   createdAt: string;
   notes?: string;
@@ -31,6 +31,7 @@ export function useLogin() {
     onSuccess: (user: AuthUser) => {
       queryClient.setQueryData(["/api/auth/me"], user);
       if (user.role === "owner") setLocation("/owner");
+      else if (user.role === "sub_owner") setLocation("/sub-owner");
       else if (user.role === "agent") setLocation("/agent");
       else setLocation("/");
     },

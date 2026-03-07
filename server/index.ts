@@ -17,7 +17,7 @@ const isProd = process.env.NODE_ENV === "production";
 declare module "express-session" {
   interface SessionData {
     accountId: string;
-    role: "owner" | "agent" | "user";
+    role: "owner" | "sub_owner" | "agent" | "user";
   }
 }
 

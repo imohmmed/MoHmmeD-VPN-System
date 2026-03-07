@@ -57,7 +57,7 @@ function parseVlessLink(link: string): {
   } catch { return null; }
 }
 
-function requireAuth(roles?: Array<"owner" | "agent" | "user">) {
+function requireAuth(roles?: Array<"owner" | "sub_owner" | "agent" | "user">) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.accountId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -266,6 +266,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(safe);
   });
 
+  app.patch("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent") return res.status(404).json({ message: "Agent not found" });
+
+    const { email, username, notes, prefix, port } = req.body;
+    const updateData: any = {};
+    if (email) updateData.email = sanitize(email).toLowerCase();
+    if (username) updateData.username = sanitize(username);
+    if (notes !== undefined) updateData.notes = notes ? sanitize(notes) : null;
+    if (prefix !== undefined) updateData.prefix = prefix ? sanitize(prefix) : null;
+    if (port !== undefined) updateData.port = port;
+
+    const updated = await storage.updateAccount(agent.id, updateData);
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
   app.delete("/api/agents/:id", requireAuth(["owner"]), async (req, res) => {
     if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const agent = await storage.getAccount(req.params.id);
@@ -289,6 +307,360 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const agent = await storage.getAccount(req.params.id);
     if (!agent) return res.status(404).json({ message: "Agent not found" });
+
+    const tx = await storage.createTransaction({
+      agentId: req.params.id,
+      type: "payment",
+      amount: Number(amount),
+      description: description || "Payment received",
+    });
+
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "record_payment",
+      details: `Payment of ${amount} IQD for agent: ${agent.username}`,
+      targetId: agent.id,
+    });
+
+    res.json(tx);
+  });
+
+  // ===== SUB-OWNERS (owner only) =====
+  app.get("/api/sub-owners", requireAuth(["owner"]), async (req, res) => {
+    const subOwners = await storage.getSubOwners();
+    const result = await Promise.all(subOwners.map(async (so) => {
+      const { passwordHash, ...safe } = so;
+      const agents = await storage.getAgentsByParent(so.id);
+      const subs = await storage.getSubscribersByParent(so.id);
+      let totalOwed = 0;
+      for (const agent of agents) {
+        const balance = await storage.getAgentBalance(agent.id);
+        totalOwed += balance;
+      }
+      return { ...safe, agentsCount: agents.length, subscribersCount: subs.length, totalOwed };
+    }));
+    res.json(result);
+  });
+
+  app.post("/api/sub-owners", requireAuth(["owner"]), async (req, res) => {
+    try {
+      const { email, username, password, notes, prefix, port } = req.body;
+      if (!email || !username || !password) return res.status(400).json({ message: "Missing fields" });
+
+      const cleanEmail = sanitize(email).toLowerCase();
+      const cleanUsername = sanitize(username);
+      const cleanPrefix = prefix ? sanitize(prefix) : cleanUsername;
+
+      const existing = await storage.getAccountByEmail(cleanEmail);
+      if (existing) return res.status(409).json({ message: "Email already exists" });
+
+      const subOwner = await storage.createAccount({
+        email: cleanEmail, username: cleanUsername, password, role: "sub_owner",
+        createdBy: req.session.accountId, notes: notes ? sanitize(notes) : undefined,
+        prefix: cleanPrefix, port: port || undefined,
+      });
+
+      await storage.createLog({
+        accountId: req.session.accountId!,
+        action: "create_agent",
+        details: `Created sub-owner: ${subOwner.username}`,
+        targetId: subOwner.id,
+      });
+
+      const { passwordHash, ...safe } = subOwner;
+      res.json(safe);
+    } catch (err: any) {
+      if (err.code === "23505") return res.status(409).json({ message: "Username or email already exists" });
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  app.get("/api/sub-owners/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+
+    const { passwordHash, ...safe } = subOwner;
+    const agents = await storage.getAgentsByParent(subOwner.id);
+    const subs = await storage.getSubscribersByParent(subOwner.id);
+    const txs = await storage.getTransactionsByParent(subOwner.id);
+    const logs = await storage.getLogs(subOwner.id);
+
+    const agentsData = await Promise.all(agents.map(async (a) => {
+      const { passwordHash: _, ...agentSafe } = a;
+      const balance = await storage.getAgentBalance(a.id);
+      const agentSubs = await storage.getSubscribers(a.id);
+      return { ...agentSafe, balance, subscribersCount: agentSubs.length };
+    }));
+
+    let totalOwed = 0;
+    for (const agent of agents) {
+      const balance = await storage.getAgentBalance(agent.id);
+      totalOwed += balance;
+    }
+
+    const totalPurchases = txs.filter(t => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+    const totalPayments = txs.filter(t => t.type === "payment").reduce((s, t) => s + t.amount, 0);
+
+    const subsWithAgent = subs.map(s => {
+      const agent = agents.find(a => a.id === s.agentId);
+      return { ...s, agentUsername: agent?.username };
+    });
+
+    res.json({
+      ...safe,
+      balance: totalOwed,
+      totalPurchases,
+      totalPayments,
+      agentsCount: agents.length,
+      subscribersCount: subs.length,
+      activeSubscribers: subs.filter(s => s.isActive).length,
+      agents: agentsData,
+      subscribers: subsWithAgent,
+      transactions: txs,
+      logs,
+    });
+  });
+
+  app.patch("/api/sub-owners/:id/suspend", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+
+    const updated = await storage.updateAccount(subOwner.id, { isActive: !subOwner.isActive });
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "suspend_agent",
+      details: `${updated.isActive ? "Activated" : "Suspended"} sub-owner: ${subOwner.username}`,
+      targetId: subOwner.id,
+    });
+
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
+  app.patch("/api/sub-owners/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+
+    const { email, username, notes, prefix, port } = req.body;
+    const updateData: any = {};
+    if (email) updateData.email = sanitize(email).toLowerCase();
+    if (username) updateData.username = sanitize(username);
+    if (notes !== undefined) updateData.notes = notes ? sanitize(notes) : null;
+    if (prefix !== undefined) updateData.prefix = prefix ? sanitize(prefix) : null;
+    if (port !== undefined) updateData.port = port;
+
+    const updated = await storage.updateAccount(subOwner.id, updateData);
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
+  app.delete("/api/sub-owners/:id", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "delete_agent",
+      details: `Deleted sub-owner: ${subOwner.username}`,
+      targetId: subOwner.id,
+    });
+
+    await storage.deleteSubOwner(subOwner.id);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/sub-owners/:id/payment", requireAuth(["owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const { amount, description } = req.body;
+    if (!amount || typeof amount !== "number" || amount <= 0 || amount > 99999999) return res.status(400).json({ message: "Invalid amount" });
+
+    const subOwner = await storage.getAccount(req.params.id);
+    if (!subOwner || subOwner.role !== "sub_owner") return res.status(404).json({ message: "Sub-owner not found" });
+
+    const agents = await storage.getAgentsByParent(subOwner.id);
+    if (agents.length === 0) return res.status(400).json({ message: "Sub-owner has no agents" });
+
+    let remaining = Number(amount);
+    const agentBalances = await Promise.all(agents.map(async (a) => ({
+      id: a.id,
+      balance: await storage.getAgentBalance(a.id),
+    })));
+    agentBalances.sort((a, b) => b.balance - a.balance);
+
+    const createdTxs = [];
+    for (const ab of agentBalances) {
+      if (remaining <= 0 || ab.balance <= 0) break;
+      const payAmount = Math.min(remaining, ab.balance);
+      const tx = await storage.createTransaction({
+        agentId: ab.id,
+        type: "payment",
+        amount: payAmount,
+        description: description || `Payment from sub-owner: ${subOwner.username}`,
+      });
+      createdTxs.push(tx);
+      remaining -= payAmount;
+    }
+
+    if (remaining > 0 && createdTxs.length === 0) {
+      const tx = await storage.createTransaction({
+        agentId: agents[0].id,
+        type: "payment",
+        amount: Number(amount),
+        description: description || `Payment from sub-owner: ${subOwner.username}`,
+      });
+      createdTxs.push(tx);
+    }
+
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "record_payment",
+      details: `Payment of ${amount} IQD for sub-owner: ${subOwner.username}`,
+      targetId: subOwner.id,
+    });
+
+    res.json(createdTxs[0] || { success: true });
+  });
+
+  // ===== SUB-OWNER's OWN AGENT MANAGEMENT =====
+  app.get("/api/my-agents", requireAuth(["sub_owner"]), async (req, res) => {
+    const agents = await storage.getAgentsByParent(req.session.accountId!);
+    const result = await Promise.all(agents.map(async (a) => {
+      const { passwordHash, ...safe } = a;
+      const balance = await storage.getAgentBalance(a.id);
+      const subs = await storage.getSubscribers(a.id);
+      return { ...safe, balance, subscribersCount: subs.length };
+    }));
+    res.json(result);
+  });
+
+  app.post("/api/my-agents", requireAuth(["sub_owner"]), async (req, res) => {
+    try {
+      const { email, username, password, notes, prefix } = req.body;
+      if (!email || !username || !password) return res.status(400).json({ message: "Missing fields" });
+
+      const cleanEmail = sanitize(email).toLowerCase();
+      const cleanUsername = sanitize(username);
+      const cleanPrefix = prefix ? sanitize(prefix) : cleanUsername;
+
+      const existing = await storage.getAccountByEmail(cleanEmail);
+      if (existing) return res.status(409).json({ message: "Email already exists" });
+
+      const agent = await storage.createAccount({
+        email: cleanEmail, username: cleanUsername, password, role: "agent",
+        createdBy: req.session.accountId, notes: notes ? sanitize(notes) : undefined, prefix: cleanPrefix,
+      });
+
+      await storage.createLog({
+        accountId: req.session.accountId!,
+        action: "create_agent",
+        details: `Created agent: ${agent.username}`,
+        targetId: agent.id,
+      });
+
+      const { passwordHash, ...safe } = agent;
+      res.json(safe);
+    } catch (err: any) {
+      if (err.code === "23505") return res.status(409).json({ message: "Username or email already exists" });
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  app.get("/api/my-agents/:id", requireAuth(["sub_owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    const { passwordHash, ...safe } = agent;
+    const balance = await storage.getAgentBalance(agent.id);
+    const subs = await storage.getSubscribers(agent.id);
+    const txs = await storage.getTransactions(agent.id);
+    const logs = await storage.getLogs(agent.id);
+
+    const totalPurchases = txs.filter(t => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+    const totalPayments = txs.filter(t => t.type === "payment").reduce((s, t) => s + t.amount, 0);
+
+    res.json({
+      ...safe,
+      balance,
+      totalPurchases,
+      totalPayments,
+      subscribersCount: subs.length,
+      activeSubscribers: subs.filter(s => s.isActive).length,
+      subscribers: subs,
+      transactions: txs,
+      logs,
+    });
+  });
+
+  app.patch("/api/my-agents/:id/suspend", requireAuth(["sub_owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    const updated = await storage.updateAccount(agent.id, { isActive: !agent.isActive });
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "suspend_agent",
+      details: `${updated.isActive ? "Activated" : "Suspended"} agent: ${agent.username}`,
+      targetId: agent.id,
+    });
+
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
+  app.patch("/api/my-agents/:id/configs", requireAuth(["sub_owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+    const { allowedConfigs } = req.body;
+    if (!Array.isArray(allowedConfigs)) return res.status(400).json({ message: "allowedConfigs must be an array" });
+    const valid = ["ws", "ws_p80", "hu_p80"];
+    const filtered = allowedConfigs.filter((c: string) => valid.includes(c));
+    const updated = await storage.updateAccount(agent.id, { allowedConfigs: filtered });
+    const { passwordHash, ...safe } = updated;
+    res.json(safe);
+  });
+
+  app.delete("/api/my-agents/:id", requireAuth(["sub_owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    await storage.createLog({
+      accountId: req.session.accountId!,
+      action: "delete_agent",
+      details: `Deleted agent: ${agent.username}`,
+      targetId: agent.id,
+    });
+
+    await storage.deleteAccount(agent.id);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/my-agents/:id/payment", requireAuth(["sub_owner"]), async (req, res) => {
+    if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
+    const { amount, description } = req.body;
+    if (!amount || typeof amount !== "number" || amount <= 0 || amount > 99999999) return res.status(400).json({ message: "Invalid amount" });
+
+    const agent = await storage.getAccount(req.params.id);
+    if (!agent || agent.role !== "agent" || agent.createdBy !== req.session.accountId) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
 
     const tx = await storage.createTransaction({
       agentId: req.params.id,
@@ -351,14 +723,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   }
 
-  app.get("/api/subscribers", requireAuth(["owner", "agent"]), async (req, res) => {
-    const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
-    let subs = await storage.getSubscribers(agentId);
+  app.get("/api/subscribers", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
+    let subs;
+    if (req.session.role === "agent") {
+      subs = await storage.getSubscribers(req.session.accountId);
+    } else if (req.session.role === "sub_owner") {
+      subs = await storage.getSubscribersByParent(req.session.accountId!);
+    } else {
+      subs = await storage.getSubscribers();
+    }
 
     subs = await syncWithMarzban(subs);
 
-    if (req.session.role === "owner") {
-      const agents = await storage.getAgents();
+    if (req.session.role === "owner" || req.session.role === "sub_owner") {
+      const agents = req.session.role === "owner"
+        ? await storage.getAgents()
+        : await storage.getAgentsByParent(req.session.accountId!);
       const agentMap = new Map(agents.map(a => [a.id, a.prefix || a.username]));
       const subsWithAgent = subs.map(s => ({
         ...s,
@@ -370,7 +750,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(subs);
   });
 
-  app.post("/api/subscribers", requireAuth(["owner", "agent"]), async (req, res) => {
+  app.post("/api/subscribers", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
     try {
       const { name: rawName, deviceId, notes, durationMonths } = req.body;
       if (!rawName) return res.status(400).json({ message: "Name is required" });
@@ -434,13 +814,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/subscribers/:id/toggle", requireAuth(["owner", "agent"]), async (req, res) => {
+  app.patch("/api/subscribers/:id/toggle", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
     if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const existing = await storage.getSubscriber(req.params.id);
     if (!existing) return res.status(404).json({ message: "Subscriber not found" });
 
     if (req.session.role === "agent" && existing.agentId !== req.session.accountId) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (req.session.role === "sub_owner") {
+      const myAgents = await storage.getAgentsByParent(req.session.accountId!);
+      const myAgentIds = myAgents.map(a => a.id);
+      if (!existing.agentId || !myAgentIds.includes(existing.agentId)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
     }
 
     const newActive = !existing.isActive;
@@ -458,13 +846,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(sub);
   });
 
-  app.delete("/api/subscribers/:id", requireAuth(["owner", "agent"]), async (req, res) => {
+  app.delete("/api/subscribers/:id", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
     if (!validateUUID(req.params.id)) return res.status(400).json({ message: "Invalid ID" });
     const sub = await storage.getSubscriber(req.params.id);
     if (!sub) return res.status(404).json({ message: "Subscriber not found" });
 
     if (req.session.role === "agent" && sub.agentId !== req.session.accountId) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (req.session.role === "sub_owner") {
+      const myAgents = await storage.getAgentsByParent(req.session.accountId!);
+      const myAgentIds = myAgents.map(a => a.id);
+      if (!sub.agentId || !myAgentIds.includes(sub.agentId)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
     }
 
     if (sub.marzbanUsername) {
@@ -483,9 +879,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ===== TRANSACTIONS =====
-  app.get("/api/transactions", requireAuth(["owner", "agent"]), async (req, res) => {
-    const agentId = req.session.role === "agent" ? req.session.accountId : undefined;
-    const txs = await storage.getTransactions(agentId);
+  app.get("/api/transactions", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
+    if (req.session.role === "agent") {
+      const txs = await storage.getTransactions(req.session.accountId);
+      return res.json(txs);
+    }
+    if (req.session.role === "sub_owner") {
+      const txs = await storage.getTransactionsByParent(req.session.accountId!);
+      return res.json(txs);
+    }
+    const txs = await storage.getTransactions();
     res.json(txs);
   });
 
@@ -496,7 +899,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ===== STATS =====
-  app.get("/api/stats", requireAuth(["owner", "agent"]), async (req, res) => {
+  app.get("/api/stats", requireAuth(["owner", "agent", "sub_owner"]), async (req, res) => {
     if (req.session.role === "owner") {
       const agents = await storage.getAgents();
       const allSubs = await storage.getSubscribers();
@@ -515,6 +918,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({
         agentsCount: agents.length,
         subscribersCount: allSubs.length,
+        totalOwed,
+        totalRevenue,
+      });
+    } else if (req.session.role === "sub_owner") {
+      const agents = await storage.getAgentsByParent(req.session.accountId!);
+      const subs = await storage.getSubscribersByParent(req.session.accountId!);
+      const txs = await storage.getTransactionsByParent(req.session.accountId!);
+
+      let totalOwed = 0;
+      for (const agent of agents) {
+        const balance = await storage.getAgentBalance(agent.id);
+        totalOwed += balance;
+      }
+      let totalRevenue = 0;
+      for (const tx of txs) {
+        if (tx.type === "payment") totalRevenue += tx.amount;
+      }
+
+      res.json({
+        agentsCount: agents.length,
+        subscribersCount: subs.length,
         totalOwed,
         totalRevenue,
       });
@@ -579,7 +1003,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const realityPubKey = process.env.REALITY_PUBLIC_KEY || "";
       const realityShortId = process.env.REALITY_SHORT_ID || "";
-      const serverDomain = process.env.VPN_SERVER_DOMAIN || "mohmmedvpn.com";
+      const defaultServerDomain = process.env.VPN_SERVER_DOMAIN || "mohmmedvpn.com";
       const serverPort = parseInt(process.env.VPN_SERVER_PORT || "8443");
       const realityServerName = process.env.REALITY_SERVER_NAME || "yahoo.com";
 
@@ -589,6 +1013,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const agentAccount = await storage.getAccount(subscriber.agentId);
       const allowedConfigs = agentAccount?.allowedConfigs || ["ws", "ws_p80", "hu_p80"];
+
+      let subOwnerPort: number | null = null;
+      if (agentAccount?.createdBy) {
+        const parentAccount = await storage.getAccount(agentAccount.createdBy);
+        if (parentAccount?.role === "sub_owner" && parentAccount.port) {
+          subOwnerPort = parentAccount.port;
+        }
+      }
+      const serverDomain = defaultServerDomain;
+
       let requestedConfigKey = "ws";
       if (configType === "hu") {
         requestedConfigKey = "hu_p80";

@@ -3,7 +3,7 @@ import { pgTable, text, varchar, boolean, timestamp, integer, pgEnum } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const roleEnum = pgEnum("role", ["owner", "agent", "user"]);
+export const roleEnum = pgEnum("role", ["owner", "sub_owner", "agent", "user"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["purchase", "payment"]);
 export const logActionEnum = pgEnum("log_action", [
   "login", "logout", "create_agent", "create_user", "create_code",
@@ -23,6 +23,7 @@ export const accounts = pgTable("accounts", {
   notes: text("notes"),
   prefix: text("prefix"),
   allowedConfigs: text("allowed_configs").array().default(sql`ARRAY['ws','ws_p80','hu_p80']`),
+  port: integer("port"),
 });
 
 export const subscribers = pgTable("subscribers", {
