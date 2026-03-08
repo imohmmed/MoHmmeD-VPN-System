@@ -54,7 +54,7 @@ type Agent = {
 };
 
 export default function AgentsPage() {
-  useEffect(() => { document.title = "Agents | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Agents | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);

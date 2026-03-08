@@ -52,7 +52,7 @@ type SubOwner = {
 };
 
 export default function SubOwnersPage() {
-  useEffect(() => { document.title = "Sub-Owners | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Sub-Owners | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);

@@ -31,7 +31,7 @@ function StatCard({ title, value, icon: Icon, sub }: {
 }
 
 export default function AgentDashboard() {
-  useEffect(() => { document.title = "Dashboard | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Dashboard | AlAli Plus"; }, []);
   const { user } = useAuth();
   const { data: stats, isLoading } = useQuery<AgentStats>({ queryKey: ["/api/stats"] });
   const { data: subs = [] } = useQuery<any[]>({ queryKey: ["/api/subscribers"] });

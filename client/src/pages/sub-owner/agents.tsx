@@ -54,7 +54,7 @@ type Agent = {
 };
 
 export default function SubOwnerAgentsPage() {
-  useEffect(() => { document.title = "My Agents | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "My Agents | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);

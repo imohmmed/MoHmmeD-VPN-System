@@ -21,7 +21,7 @@ type Transaction = {
 type Stats = { balance: number };
 
 export default function AgentTransactionsPage() {
-  useEffect(() => { document.title = "Transactions | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Transactions | AlAli Plus"; }, []);
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: stats } = useStatsQuery<Stats>({ queryKey: ["/api/stats"] });
 

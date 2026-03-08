@@ -276,7 +276,7 @@ function generateVpnConfig(deviceId?: string) {
   const serverDomain = process.env.VPN_SERVER_DOMAIN || "localhost";
   return {
     v: "2",
-    ps: "MoHmmeD VPN",
+    ps: "AlAliPlus VPN",
     add: serverDomain,
     port: "443",
     id: uuid,
@@ -290,7 +290,7 @@ function generateVpnConfig(deviceId?: string) {
     sni: serverDomain,
     alpn: "",
     fp: "",
-    remark: `MoHmmeD VPN - ${deviceId ? deviceId.substring(0, 8) : uuid.substring(0, 8)}`,
+    remark: `AlAliPlus VPN - ${deviceId ? deviceId.substring(0, 8) : uuid.substring(0, 8)}`,
   };
 }
 

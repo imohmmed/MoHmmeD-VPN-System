@@ -138,7 +138,7 @@ function SubscriberCard({ sub, onDelete, onToggle, onCopy, copied }: {
 }
 
 export default function OwnerUsersPage() {
-  useEffect(() => { document.title = "Subscribers | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Subscribers | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

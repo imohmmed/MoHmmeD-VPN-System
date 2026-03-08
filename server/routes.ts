@@ -39,7 +39,7 @@ async function getConfigRemarkName(subscriber: any): Promise<string> {
         return `${parentLabel} - ${agentLabel} - ${subName}`;
       }
     }
-    return `MoHmmeDVPN - ${agentLabel} - ${subName}`;
+    return `AlAliPlus - ${agentLabel} - ${subName}`;
   }
 
   if (subscriber.createdBy) {
@@ -50,7 +50,7 @@ async function getConfigRemarkName(subscriber: any): Promise<string> {
     }
   }
 
-  return `MoHmmeDVPN - ${subName}`;
+  return `AlAliPlus - ${subName}`;
 }
 
 function parseVlessLink(link: string): {
@@ -1253,7 +1253,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (subscriber.expiresAt) {
         res.setHeader("Subscription-Userinfo", `expire=${Math.floor(new Date(subscriber.expiresAt).getTime() / 1000)}`);
       }
-      res.setHeader("Profile-Title", `MoHmmeD VPN - ${subscriber.name}`);
+      res.setHeader("Profile-Title", `AlAliPlus VPN - ${subscriber.name}`);
       res.send(subContent);
     } catch (e) {
       console.error("Sub endpoint error:", e);

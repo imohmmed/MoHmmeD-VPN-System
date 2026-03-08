@@ -18,7 +18,7 @@ type Transaction = {
 };
 
 export default function SubOwnerTransactionsPage() {
-  useEffect(() => { document.title = "Transactions | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Transactions | AlAli Plus"; }, []);
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: agents = [] } = useQuery<any[]>({ queryKey: ["/api/my-agents"] });
 

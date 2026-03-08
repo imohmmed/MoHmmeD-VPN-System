@@ -139,7 +139,7 @@ function SubCard({ sub, onDelete, onToggle, onCopy, copied, allowedConfigs }: {
 }
 
 export default function AgentUsersPage() {
-  useEffect(() => { document.title = "My Subscribers | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "My Subscribers | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

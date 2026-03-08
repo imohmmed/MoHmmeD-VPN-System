@@ -18,7 +18,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  useEffect(() => { document.title = "Login | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Login | AlAli Plus"; }, []);
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: login, isPending } = useLogin();
   const { toast } = useToast();
@@ -45,7 +45,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">MoHmmeD VPN</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">AlAliPlus VPN</h1>
           <p className="text-muted-foreground mt-1 text-sm">Secure • Fast • Reliable</p>
         </div>
 

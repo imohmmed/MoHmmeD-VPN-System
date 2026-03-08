@@ -50,7 +50,7 @@ export function AppSidebar() {
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-sidebar-foreground text-sm leading-tight truncate">MoHmmeD VPN</p>
+            <p className="font-bold text-sidebar-foreground text-sm leading-tight truncate">AlAliPlus VPN</p>
             <p className="text-xs text-muted-foreground leading-tight">Management System</p>
           </div>
         </div>

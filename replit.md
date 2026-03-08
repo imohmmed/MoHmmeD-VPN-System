@@ -1,4 +1,4 @@
-# MoHmmeD VPN - VPN Subscription Management System
+# AlAliPlus VPN - VPN Subscription Management System
 
 ## Overview
 A full-stack VPN subscription management platform built for selling NPV Tunnel VPN configurations. Supports three user roles: Owner, Agent (reseller), and Subscriber (merged user+code concept).

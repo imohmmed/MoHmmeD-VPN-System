@@ -31,7 +31,7 @@ const actionConfig: Record<string, { icon: any; color: string; label: string }> 
 };
 
 export default function LogsPage() {
-  useEffect(() => { document.title = "Activity Logs | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Activity Logs | AlAli Plus"; }, []);
   const { data: logs = [], isLoading } = useQuery<Log[]>({ queryKey: ["/api/logs"] });
   const { data: agents = [] } = useQuery<any[]>({ queryKey: ["/api/agents"] });
 

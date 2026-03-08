@@ -32,7 +32,7 @@ function StatCard({ title, value, icon: Icon, description }: {
 }
 
 export default function OwnerDashboard() {
-  useEffect(() => { document.title = "Dashboard | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Dashboard | AlAli Plus"; }, []);
   const { data: stats, isLoading } = useQuery<Stats>({ queryKey: ["/api/stats"] });
   const { data: agents } = useQuery<any[]>({ queryKey: ["/api/agents"] });
 
@@ -43,7 +43,7 @@ export default function OwnerDashboard() {
       <div className="space-y-6 max-w-6xl">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Dashboard Overview</h2>
-          <p className="text-muted-foreground text-sm mt-1">MoHmmeD VPN management overview</p>
+          <p className="text-muted-foreground text-sm mt-1">AlAliPlus VPN management overview</p>
         </div>
 
         {isLoading ? (

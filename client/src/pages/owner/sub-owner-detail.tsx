@@ -66,7 +66,7 @@ type SubOwnerDetail = {
 };
 
 export default function SubOwnerDetailPage() {
-  useEffect(() => { document.title = "Sub-Owner Details | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Sub-Owner Details | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/owner/sub-owners/:id");

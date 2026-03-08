@@ -69,7 +69,7 @@ type AgentDetail = {
 };
 
 export default function AgentDetailPage() {
-  useEffect(() => { document.title = "Agent Details | MoHmmeD VPN"; }, []);
+  useEffect(() => { document.title = "Agent Details | AlAli Plus"; }, []);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/owner/agents/:id");
